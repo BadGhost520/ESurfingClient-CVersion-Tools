@@ -1,272 +1,21 @@
-#include "utils/PlatformUtils.h"
-#include "utils/Logger.h"
 #include "NetClient.h"
-#include "States.h"
 
-#include <openssl/evp.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#ifdef __OPENWRT__
-#include <errno.h>
+#define HTTP_CONNECT_TIMEOUT 1L
+#define HTTP_MAX_REDIRS 5L
+#define HTTP_BATCH_TIMEOUT 1L
+#define HTTP_DEFAULT_CONCURRENCY 8
 
-#ifndef SOL_SOCKET
-    #define SOL_SOCKET 1
-#endif
-
-#ifndef SO_MARK
-    #define SO_MARK 36
-#endif
-#endif
-
-#define MAX_LEN 128
-
-#define SCHOOL_ID_LENGTH 8
-#define DOMAIN_LENGTH 16
-#define AREA_LENGTH 8
-
-static const char s_req_content_type[] = "Content-Type: application/x-www-form-urlencoded";
-static const char s_req_accept[] = "Accept: text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*";
-static const char s_generate_url[] = "http://223.5.5.5";
-
-static char s_school_id[SCHOOL_ID_LENGTH];
-static char s_domain[DOMAIN_LENGTH];
-static char s_area[AREA_LENGTH];
-static _Thread_local char s_request_url[LAST_LOCATION_LEN];
-
-static void resolve_url(char* out, size_t out_len, const char* base, const char* ref)
+typedef struct
 {
-    if (out == NULL || out_len == 0) return;
-    out[0] = '\0';
-    if (ref == NULL || ref[0] == '\0')
-    {
-        if (base) snprintf(out, out_len, "%s", base);
-        return;
-    }
-    if (strncmp(ref, "http://", 7) == 0 || strncmp(ref, "https://", 8) == 0)
-    {
-        snprintf(out, out_len, "%s", ref);
-        return;
-    }
-    if (base == NULL || base[0] == '\0')
-    {
-        snprintf(out, out_len, "%s", ref);
-        return;
-    }
-    if (ref[0] == '/' && ref[1] == '/')
-    {
-        const char* scheme_end = strstr(base, "://");
-        if (scheme_end) snprintf(out, out_len, "%.*s:%s", (int)(scheme_end - base), base, ref);
-        else snprintf(out, out_len, "http:%s", ref);
-        return;
-    }
-
-    const char* scheme = strstr(base, "://");
-    const char* host_start = scheme ? scheme + 3 : base;
-    const char* path_start = strchr(host_start, '/');
-    if (ref[0] == '/')
-    {
-        if (path_start) snprintf(out, out_len, "%.*s%s", (int)(path_start - base), base, ref);
-        else snprintf(out, out_len, "%s%s", base, ref);
-        return;
-    }
-
-    if (path_start)
-    {
-        const char* query = strchr(path_start, '?');
-        const char* end = query ? query : path_start + strlen(path_start);
-        const char* last_slash = path_start;
-        for (const char* p = path_start; p < end; p++)
-        {
-            if (*p == '/') last_slash = p;
-        }
-        snprintf(out, out_len, "%.*s/%s", (int)(last_slash - base), base, ref);
-    }
-    else
-    {
-        snprintf(out, out_len, "%s/%s", base, ref);
-    }
-}
-
-char* extract_url_param(const char* url, const char* search_str_start)
-{
-    if (url == NULL || search_str_start == NULL)
-    {
-        LOG_ERROR("URL 为空");
-        return NULL;
-    }
-
-    const size_t name_len = strlen(search_str_start);
-    char search_pattern[64];
-    if (name_len + 2 > sizeof(search_pattern))
-    {
-        LOG_ERROR("参数名过长");
-        return NULL;
-    }
-    snprintf(search_pattern, sizeof(search_pattern), "%s=", search_str_start);
-
-    const char* start = strstr(url, search_pattern);
-    if (start == NULL)
-    {
-        LOG_ERROR("未找到参数: %s", search_pattern);
-        return NULL;
-    }
-    start += name_len + 1;
-
-    /* 最后一个参数后面没有 '&', 也要能截取到结尾或 '#' */
-    const size_t value_len = strcspn(start, "&#");
-    char* result = malloc(value_len + 1);
-    if (result == NULL)
-    {
-        LOG_ERROR("分配内存失败");
-        return NULL;
-    }
-    memcpy(result, start, value_len);
-    result[value_len] = '\0';
-    return result;
-}
-
-#ifdef __OPENWRT__
-static curl_socket_t open_socket_callback(void* client_p, curlsocktype purpose, struct curl_sockaddr* addr)
-{
-    (void)client_p;
-    (void)purpose;
-    curl_socket_t sock_fd = socket(addr->family, addr->socktype, addr->protocol);
-    if (sock_fd == CURL_SOCKET_BAD)
-    {
-        LOG_ERROR("创建 socket 失败: %s", strerror(errno));
-        return CURL_SOCKET_BAD;
-    }
-
-    if (g_prog_status[tl_thread_idx].login_cfg.mark != 0)
-    {
-        if (setsockopt(sock_fd, SOL_SOCKET, SO_MARK, &g_prog_status[tl_thread_idx].login_cfg.mark, sizeof(g_prog_status[tl_thread_idx].login_cfg.mark)) == -1)
-        {
-            LOG_ERROR("设置 SO_MARK 失败 (mark = %" PRIu32 " (0x%x)): %s", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark, strerror(errno));
-        }
-        else
-        {
-            LOG_VERBOSE("设置 SO_MARK = %" PRIu32 " (0x%x)", g_prog_status[tl_thread_idx].login_cfg.mark, g_prog_status[tl_thread_idx].login_cfg.mark);
-        }
-    }
-
-    return sock_fd;
-}
-#endif
-
-static size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
-{
-    const size_t real_size = size * nmemb;
-    const char* header = contents;
-
-    if (real_size >= 9 && strncmp(header, "schoolid:", 9) == 0 && !s_school_id[0])
-    {
-        if (s_school_id[0] == '\0')
-        {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 9;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= SCHOOL_ID_LENGTH)
-            {
-                copy_len = SCHOOL_ID_LENGTH - 1;
-                LOG_WARN("School Id 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, SCHOOL_ID_LENGTH);
-            }
-
-            memcpy(s_school_id, value, copy_len);
-            s_school_id[copy_len] = '\0';
-
-            LOG_INFO("School Id: %s", s_school_id);
-        }
-    }
-
-    if (real_size >= 7 && strncmp(header, "domain:", 7) == 0 && !s_domain[0])
-    {
-        if (s_domain[0] == '\0')
-        {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 7;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= DOMAIN_LENGTH)
-            {
-                copy_len = DOMAIN_LENGTH - 1;
-                LOG_WARN("Domain 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, DOMAIN_LENGTH);
-            }
-
-            memcpy(s_domain, value, copy_len);
-            s_domain[copy_len] = '\0';
-
-            LOG_INFO("Domain: %s", s_domain);
-        }
-    }
-
-    if (real_size >= 5 && strncmp(header, "area:", 5) == 0 && !s_area[0])
-    {
-        if (s_area[0] == '\0')
-        {
-            LOG_VERBOSE("原始数据: %s", header);
-
-            const char* value = header + 5;
-            while (*value == ' ') value++;
-            const size_t valid_len = strcspn(value, "\r\n");
-
-            size_t copy_len = valid_len;
-            if (copy_len >= AREA_LENGTH)
-            {
-                copy_len = AREA_LENGTH - 1;
-                LOG_WARN("Area 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, AREA_LENGTH);
-            }
-
-            memcpy(s_area, value, copy_len);
-            s_area[copy_len] = '\0';
-
-            LOG_INFO("Area: %s", s_area);
-        }
-    }
-
-    if (real_size >= 9 && strncasecmp(header, "Location:", 9) == 0)
-    {
-        if (tl_thread_idx > -1)
-        {
-            if (!g_prog_status[tl_thread_idx].last_location_lock)
-            {
-                LOG_VERBOSE("原始数据: %s", header);
-
-                const char* value = header + 9;
-                while (*value == ' ') value++;
-                const size_t valid_len = strcspn(value, "\r\n");
-
-                size_t copy_len = valid_len;
-                if (copy_len >= LAST_LOCATION_LEN)
-                {
-                    copy_len = LAST_LOCATION_LEN - 1;
-                    LOG_WARN("Location 被截断, 原长度: %zu, 缓冲区大小: %d", valid_len, LAST_LOCATION_LEN);
-                }
-
-                char location[LAST_LOCATION_LEN];
-                memcpy(location, value, copy_len);
-                location[copy_len] = '\0';
-
-                char resolved[LAST_LOCATION_LEN];
-                resolve_url(resolved, sizeof(resolved), s_request_url, location);
-                snprintf(g_prog_status[tl_thread_idx].last_location, LAST_LOCATION_LEN, "%s", resolved);
-
-                LOG_VERBOSE("现在的 last_location: %s (长度: %zu)",
-                            g_prog_status[tl_thread_idx].last_location,
-                            strlen(g_prog_status[tl_thread_idx].last_location));
-            }
-        }
-    }
-
-    return real_size;
-}
+    http_post_item_t* item;
+    CURL* easy;
+    struct curl_slist* headers;
+    bool done;
+} http_batch_slot_t;
 
 static size_t write_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
 {
@@ -274,431 +23,274 @@ static size_t write_cb(const void* contents, const size_t size, const size_t nme
     const size_t real_size = size * nmemb;
     char* ptr = realloc(resp->body_data, resp->body_size + real_size + 1);
 
-    if (!ptr) return 0;
+    if (ptr == NULL) return 0;
 
     resp->body_data = ptr;
-    memcpy(&resp->body_data[resp->body_size], contents, real_size);
+    memcpy(resp->body_data + resp->body_size, contents, real_size);
     resp->body_size += real_size;
-    resp->body_data[resp->body_size] = 0;
-
+    resp->body_data[resp->body_size] = '\0';
     return real_size;
 }
 
-static char* calc_md5(const char* data)
+static void resp_set_error(http_resp_t* resp, const CURLcode code, const char* msg)
 {
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_len;
-    char* md5_str = malloc(33);
-
-    if (!md5_str)
-    {
-        LOG_ERROR("分配内存失败");
-        return NULL;
-    }
-
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    if (!mdctx)
-    {
-        free(md5_str);
-        return NULL;
-    }
-
-    const EVP_MD* md = EVP_md5();
-    if (EVP_DigestInit_ex(mdctx, md, NULL) != 1)
-    {
-        EVP_MD_CTX_free(mdctx);
-        free(md5_str);
-        return NULL;
-    }
-
-    if (EVP_DigestUpdate(mdctx, data, strlen(data)) != 1)
-    {
-        EVP_MD_CTX_free(mdctx);
-        free(md5_str);
-        return NULL;
-    }
-
-    if (EVP_DigestFinal_ex(mdctx, digest, &digest_len) != 1)
-    {
-        EVP_MD_CTX_free(mdctx);
-        free(md5_str);
-        return NULL;
-    }
-    EVP_MD_CTX_free(mdctx);
-
-    for (unsigned int i = 0; i < digest_len; i++) sprintf(&md5_str[i*2], "%02x", (unsigned int)digest[i]);
-
-    return md5_str;
+    resp->curl_code = code;
+    snprintf(resp->error, sizeof(resp->error), "%s", msg != NULL ? msg : curl_easy_strerror(code));
 }
 
-static NetworkStatus curl_err_msg_out(const CURLcode curl_code)
+bool http_global_init()
 {
-    switch (curl_code)
-    {
-    case CURLE_COULDNT_RESOLVE_HOST:
-        LOG_ERROR("curl 错误码: 6, 错误原因: DNS 解析错误");
-        return REQUEST_ERROR;
-    case CURLE_COULDNT_CONNECT:
-        LOG_ERROR("curl 错误码: 7, 错误原因: 连接服务器失败");
-        return REQUEST_ERROR;
-    case CURLE_OPERATION_TIMEDOUT:
-        LOG_ERROR("curl 错误码: 28, 错误原因: 操作超时");
-        return REQUEST_WARN;
-    case CURLE_HTTP_RETURNED_ERROR:
-        LOG_ERROR("curl 错误码: 22, 错误原因: HTTP 状态码 ≥ 400");
-        return REQUEST_ERROR;
-    case CURLE_GOT_NOTHING:
-        LOG_ERROR("curl 错误码: 52, 错误原因: 服务器返回空数据");
-        return REQUEST_ERROR;
-    case CURLE_URL_MALFORMAT:
-        LOG_ERROR("curl 错误码: 3, 错误原因: URL 格式错误");
-        return REQUEST_ERROR;
-    case CURLE_WRITE_ERROR:
-        LOG_ERROR("curl 错误码: 23, 错误原因: 写入数据失败");
-        return REQUEST_ERROR;
-    case CURLE_ABORTED_BY_CALLBACK:
-        LOG_ERROR("curl 错误码: 42, 错误原因: 回调函数中止");
-        return REQUEST_ERROR;
-    default:
-        LOG_ERROR("未知错误");
-        return REQUEST_ERROR;
-    }
+    return curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
 }
 
-http_resp_t post(const char* url, const char* data)
+void http_global_cleanup()
 {
-    LOG_VERBOSE("POST 地址: %s", url);
-    LOG_VERBOSE("POST 数据: %s", data);
-
-    http_resp_t resp = {0};
-
-    char md5_hash_str[MAX_LEN] = {0};
-    char ua[MAX_LEN] = {0};
-    char c_id[MAX_LEN] = {0};
-    char a_id[MAX_LEN] = {0};
-    char cdc_sid[MAX_LEN] = {0};
-    char cdc_d[MAX_LEN] = {0};
-    char cdc_a[MAX_LEN] = {0};
-    char* md5_hash = calc_md5(data);
-    if (!md5_hash)
-    {
-        LOG_ERROR("计算 MD5 失败");
-        resp.status = REQUEST_ERROR;
-        return resp;
-    }
-
-    snprintf(md5_hash_str, MAX_LEN, "CDC-Checksum: %s", safe_str(md5_hash));
-    free(md5_hash);
-    snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
-    snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
-    snprintf(a_id, MAX_LEN, "Algo-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.algo_id));
-    snprintf(cdc_sid, MAX_LEN, "CDC-SchoolId: %s", safe_str(s_school_id));
-    snprintf(cdc_d, MAX_LEN, "CDC-Domain: %s", safe_str(s_domain));
-    snprintf(cdc_a, MAX_LEN, "CDC-Area: %s", safe_str(s_area));
-
-    LOG_VERBOSE("POST 添加头 %s", md5_hash_str);
-    LOG_VERBOSE("POST 添加头 %s", s_req_content_type);
-    LOG_VERBOSE("POST 添加头 %s", ua);
-    LOG_VERBOSE("POST 添加头 %s", s_req_accept);
-    LOG_VERBOSE("POST 添加头 %s", c_id);
-    LOG_VERBOSE("POST 添加头 %s", a_id);
-    LOG_VERBOSE("POST 添加头 %s", cdc_sid);
-    LOG_VERBOSE("POST 添加头 %s", cdc_d);
-    LOG_VERBOSE("POST 添加头 %s", cdc_a);
-    LOG_VERBOSE("下标: %" PRId8, tl_thread_idx);
-
-    struct curl_slist* headers = NULL;
-
-    headers = curl_slist_append(headers, md5_hash_str);
-    headers = curl_slist_append(headers, s_req_content_type);
-    headers = curl_slist_append(headers, ua);
-    headers = curl_slist_append(headers, s_req_accept);
-    headers = curl_slist_append(headers, c_id);
-    headers = curl_slist_append(headers, a_id);
-    headers = curl_slist_append(headers, cdc_sid);
-    headers = curl_slist_append(headers, cdc_d);
-    headers = curl_slist_append(headers, cdc_a);
-
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
-    {
-        LOG_ERROR("curl 初始化失败");
-        resp.status = REQUEST_INIT_ERROR;
-        curl_slist_free_all(headers);
-        return resp;
-    }
-    LOG_VERBOSE("curl 初始化完成, curl: %p", curl);
-
-    LOG_VERBOSE("设置 curl 选项");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-
-#ifdef __OPENWRT__
-    curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
-#endif
-
-    LOG_VERBOSE("执行 CURL");
-    const CURLcode curl_code = curl_easy_perform(curl);
-    if (curl_code != CURLE_OK)
-    {
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        resp.status = curl_err_msg_out(curl_code);
-        return resp;
-    }
-
-    LOG_VERBOSE("获取响应码");
-    long resp_code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
-
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
-
-    if (resp_code == 302)
-    {
-        LOG_DEBUG("重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
-        resp.status = REQUEST_REDIRECT;
-        return resp;
-    }
-    if (resp_code == 200)
-    {
-        LOG_DEBUG("有响应体, 响应码: 200");
-        resp.status = REQUEST_HAVE_RES;
-        return resp;
-    }
-    if (resp_code == 204)
-    {
-        LOG_VERBOSE("无响应体, 响应码: 204");
-        resp.status = REQUEST_SUCCESS;
-        return resp;
-    }
-
-    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
-    resp.status = REQUEST_ERROR;
-    return resp;
+    curl_global_cleanup();
 }
 
-http_resp_t get(const char* url)
+/**
+ * @brief 初始化一个 easy handle 并加入 multi
+ * @return 是否成功
+ */
+static bool batch_start_slot(CURLM* multi, const char* url, http_batch_slot_t* slot, const long timeout)
 {
-    LOG_VERBOSE("GET 地址: %s", url);
+    http_post_item_t* item = slot->item;
+    struct curl_slist* header_list = NULL;
+    CURL* easy;
 
-    http_resp_t resp = {0};
-
-    char ua[MAX_LEN] = {0};
-    char c_id[MAX_LEN] = {0};
-
-    struct curl_slist* headers = NULL;
-
-    if (tl_thread_idx > -1)
+    if (item->data == NULL)
     {
-        snprintf(s_request_url, sizeof(s_request_url), "%s", safe_str(url));
-        snprintf(ua, MAX_LEN, "User-Agent: %s", safe_str(g_prog_status[tl_thread_idx].login_cfg.user_agent));
-        snprintf(c_id, MAX_LEN, "Client-ID: %s", safe_str(g_prog_status[tl_thread_idx].auth_cfg.client_id));
-
-        LOG_VERBOSE("GET 添加头 %s", ua);
-        LOG_VERBOSE("GET 添加头 %s", s_req_accept);
-        LOG_VERBOSE("GET 添加头 %s", c_id);
-        LOG_VERBOSE("线程下标: %" PRId8, tl_thread_idx);
-
-        headers = curl_slist_append(headers, ua);
-        headers = curl_slist_append(headers, s_req_accept);
-        headers = curl_slist_append(headers, c_id);
+        resp_set_error(&item->resp, CURLE_BAD_FUNCTION_ARGUMENT, "POST 数据为空");
+        return false;
     }
 
-    CURL* curl = curl_easy_init();
-    if (curl == NULL)
+    easy = curl_easy_init();
+    if (easy == NULL)
     {
-        LOG_ERROR("curl 初始化失败");
-        resp.status = REQUEST_INIT_ERROR;
-        curl_slist_free_all(headers);
-        return resp;
-    }
-    LOG_VERBOSE("curl 初始化完成, curl = %p", curl);
-
-    LOG_VERBOSE("设置 curl 选项");
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
-    if (tl_thread_idx > -1)
-    {
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_cb);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &resp);
-        curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
-    #ifdef __OPENWRT__
-        curl_easy_setopt(curl, CURLOPT_OPENSOCKETFUNCTION, open_socket_callback);
-    #endif
+        resp_set_error(&item->resp, CURLE_FAILED_INIT, "curl 初始化失败");
+        return false;
     }
 
-    LOG_VERBOSE("执行 CURL");
-    const CURLcode curl_code = curl_easy_perform(curl);
-    if (curl_code != CURLE_OK)
+    if (item->headers != NULL)
     {
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        resp.status = curl_err_msg_out(curl_code);
-        resp.curl_code = curl_code;
-        return resp;
-    }
-
-    LOG_VERBOSE("获取响应码");
-    long resp_code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &resp_code);
-
-    curl_easy_cleanup(curl);
-    curl_slist_free_all(headers);
-
-    if (resp_code == 302)
-    {
-        LOG_DEBUG("重定向, 响应码: 302");
-        if (tl_thread_idx > -1) LOG_VERBOSE("重定向至: %s", g_prog_status[tl_thread_idx].last_location);
-        resp.status = REQUEST_REDIRECT;
-        return resp;
-    }
-    if (resp_code == 200)
-    {
-        LOG_DEBUG("有响应体, 响应码: 200");
-        resp.status = REQUEST_HAVE_RES;
-        return resp;
-    }
-    if (resp_code == 204)
-    {
-        LOG_VERBOSE("无响应体, 响应码: 204");
-        resp.status = REQUEST_SUCCESS;
-        return resp;
-    }
-    if (resp_code == 404)
-    {
-        LOG_VERBOSE("资源不存在, 响应码: 404");
-        resp.status = REQUEST_NOT_FOUND;
-        return resp;
-    }
-
-    LOG_ERROR("HTTP 响应错误, 响应码: %ld", resp_code);
-    resp.status = REQUEST_ERROR;
-    return resp;
-}
-
-NetworkStatus check_network_status()
-{
-    const http_resp_t resp = get(s_generate_url);
-    if (resp.status == REQUEST_NOT_FOUND) return REQUEST_SUCCESS; // 404代表已连接至互联网
-    return resp.status;
-}
-
-static void get_school_ip_symbol()
-{
-    if (g_school_network_symbol[0] != '\0')
-    {
-        return;
-    }
-    if (tl_thread_idx < 0)
-    {
-        return;
-    }
-
-    /* 必须用当前线程的 last_location。配置 1 已联网时 g_prog_status[0].last_location 为空。 */
-    char* school_ip = extract_url_param(g_prog_status[tl_thread_idx].last_location, "wlanuserip");
-    if (school_ip == NULL)
-    {
-        LOG_ERROR("无法从 last_location 提取 wlanuserip");
-        return;
-    }
-
-    const char* first_dot = strchr(school_ip, '.');
-    const char* second_dot = first_dot ? strchr(first_dot + 1, '.') : NULL;
-    if (second_dot == NULL)
-    {
-        LOG_ERROR("wlanuserip 格式无效: %s", school_ip);
-        free(school_ip);
-        return;
-    }
-
-    const size_t len = (size_t)(second_dot - school_ip);
-    if (len == 0 || len >= SCHOOL_NETWORK_SYMBOL)
-    {
-        LOG_ERROR("校园网标志长度无效: %zu", len);
-        free(school_ip);
-        return;
-    }
-
-    memcpy(g_school_network_symbol, school_ip, len);
-    g_school_network_symbol[len] = '\0';
-    LOG_INFO("获取到校园网标志: %s", g_school_network_symbol);
-    free(school_ip);
-}
-
-NetworkStatus get_last_location()
-{
-    http_resp_t resp = {0};
-
-    uint8_t retry = 1;
-    do
-    {
-        if (resp.body_data)
+        for (size_t i = 0; item->headers[i] != NULL; i++)
         {
-            free(resp.body_data);
-            resp.body_data = NULL;
-            resp.body_size = 0;
-        }
-        resp = get(s_generate_url); // 检测响应码
-        if (resp.status == REQUEST_NOT_FOUND) resp.status = REQUEST_SUCCESS; // 404 代表已连接至互联网
-        switch (resp.status)
-        {
-        case REQUEST_REDIRECT:
-            break;
-        case REQUEST_SUCCESS:
-            retry = 1;
-            LOG_INFO("已连接至互联网");
-            sleep_ms(10000, true);
-            break;
-        default:
-            if (retry > 5)
+            struct curl_slist* next = curl_slist_append(header_list, item->headers[i]);
+            if (next == NULL)
             {
-                LOG_FATAL("超过最多重试次数");
-                if (resp.body_data) free(resp.body_data);
-                return REQUEST_ERROR;
+                curl_slist_free_all(header_list);
+                curl_easy_cleanup(easy);
+                resp_set_error(&item->resp, CURLE_OUT_OF_MEMORY, "添加请求头失败");
+                return false;
             }
-            LOG_WARN("非重定向, 响应码: %d, 重试: 第 %" PRIu8 " 次, 最多 5 次", resp.status, retry);
-            retry++;
-            sleep_ms(1000, true);
+            header_list = next;
+        }
+    }
+
+    curl_easy_setopt(easy, CURLOPT_URL, url);
+    curl_easy_setopt(easy, CURLOPT_POST, 1L);
+    curl_easy_setopt(easy, CURLOPT_POSTFIELDS, item->data);
+    curl_easy_setopt(easy, CURLOPT_HTTPHEADER, header_list);
+    curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(easy, CURLOPT_MAXREDIRS, HTTP_MAX_REDIRS);
+    curl_easy_setopt(easy, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+    curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, HTTP_CONNECT_TIMEOUT);
+    curl_easy_setopt(easy, CURLOPT_TIMEOUT, timeout);
+    curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, item->resp.error);
+    curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, write_cb);
+    curl_easy_setopt(easy, CURLOPT_WRITEDATA, &item->resp);
+    curl_easy_setopt(easy, CURLOPT_PRIVATE, slot);
+
+    const CURLMcode mc = curl_multi_add_handle(multi, easy);
+    if (mc != CURLM_OK)
+    {
+        resp_set_error(&item->resp, CURLE_FAILED_INIT, curl_multi_strerror(mc));
+        curl_easy_cleanup(easy);
+        curl_slist_free_all(header_list);
+        return false;
+    }
+
+    slot->easy = easy;
+    slot->headers = header_list;
+    return true;
+}
+
+void http_post_batch(const char* url, http_post_item_t* items, const size_t count, const size_t max_concurrent)
+{
+    http_batch_slot_t* slots;
+    CURLM* multi;
+    size_t limit;
+    size_t next = 0;
+    size_t active = 0;
+    size_t completed = 0;
+    int still_running = 0;
+
+    if (items == NULL || count == 0) return;
+
+    for (size_t i = 0; i < count; i++) memset(&items[i].resp, 0, sizeof(items[i].resp));
+
+    if (url == NULL)
+    {
+        for (size_t i = 0; i < count; i++) resp_set_error(&items[i].resp, CURLE_BAD_FUNCTION_ARGUMENT, "URL 为空");
+        return;
+    }
+
+    slots = calloc(count, sizeof(*slots));
+    if (slots == NULL)
+    {
+        for (size_t i = 0; i < count; i++) resp_set_error(&items[i].resp, CURLE_OUT_OF_MEMORY, "分配请求槽失败");
+        return;
+    }
+
+    multi = curl_multi_init();
+    if (multi == NULL)
+    {
+        free(slots);
+        for (size_t i = 0; i < count; i++) resp_set_error(&items[i].resp, CURLE_FAILED_INIT, "curl multi 初始化失败");
+        return;
+    }
+
+    limit = max_concurrent > 0 ? max_concurrent : HTTP_DEFAULT_CONCURRENCY;
+    if (limit > count) limit = count;
+
+    while (next < count && active < limit)
+    {
+        slots[next].item = &items[next];
+        if (batch_start_slot(multi, url, &slots[next], HTTP_BATCH_TIMEOUT)) active++;
+        else
+        {
+            slots[next].done = true;
+            completed++;
+        }
+        next++;
+    }
+
+    while (completed < count)
+    {
+        const CURLMcode mc = curl_multi_perform(multi, &still_running);
+        if (mc != CURLM_OK)
+        {
+            for (size_t i = 0; i < count; i++)
+            {
+                if (slots[i].done) continue;
+                resp_set_error(&items[i].resp, CURLE_FAILED_INIT, curl_multi_strerror(mc));
+                slots[i].done = true;
+                completed++;
+            }
             break;
         }
-    } while (resp.status != REQUEST_REDIRECT);
 
-    while (resp.status == REQUEST_REDIRECT)
-    {
-        if (resp.body_data)
+        int queued = 0;
+        CURLMsg* msg;
+        while ((msg = curl_multi_info_read(multi, &queued)) != NULL)
         {
-            free(resp.body_data);
-            resp.body_data = NULL;
-            resp.body_size = 0;
+            if (msg->msg != CURLMSG_DONE) continue;
+
+            CURL* easy = msg->easy_handle;
+            char* private_ptr = NULL;
+            http_batch_slot_t* slot;
+
+            curl_easy_getinfo(easy, CURLINFO_PRIVATE, &private_ptr);
+            slot = (http_batch_slot_t*)private_ptr;
+            if (slot == NULL)
+            {
+                curl_multi_remove_handle(multi, easy);
+                curl_easy_cleanup(easy);
+                continue;
+            }
+
+            slot->item->resp.curl_code = msg->data.result;
+            if (msg->data.result == CURLE_OK)
+            {
+                curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &slot->item->resp.http_code);
+            }
+            else if (slot->item->resp.error[0] == '\0')
+            {
+                snprintf(slot->item->resp.error, sizeof(slot->item->resp.error), "%s",
+                    curl_easy_strerror(msg->data.result));
+            }
+
+            curl_multi_remove_handle(multi, easy);
+            curl_easy_cleanup(easy);
+            curl_slist_free_all(slot->headers);
+            slot->easy = NULL;
+            slot->headers = NULL;
+            slot->done = true;
+            completed++;
+            if (active > 0) active--;
+
+            while (next < count && active < limit)
+            {
+                slots[next].item = &items[next];
+                if (batch_start_slot(multi, url, &slots[next], HTTP_BATCH_TIMEOUT)) active++;
+                else
+                {
+                    slots[next].done = true;
+                    completed++;
+                }
+                next++;
+            }
         }
-        resp = get(g_prog_status[tl_thread_idx].last_location);
+
+        if (completed >= count) break;
+
+        if (active == 0 && next >= count)
+        {
+            for (size_t i = 0; i < count; i++)
+            {
+                if (slots[i].done) continue;
+                resp_set_error(&items[i].resp, CURLE_FAILED_INIT, "请求未完成");
+                slots[i].done = true;
+                completed++;
+            }
+            break;
+        }
+
+        if (still_running > 0)
+        {
+            int numfds = 0;
+            curl_multi_wait(multi, NULL, 0, 1000, &numfds);
+        }
     }
 
-    if (resp.body_data)
+    for (size_t i = 0; i < count; i++)
     {
-        free(resp.body_data);
-        resp.body_data = NULL;
-        resp.body_size = 0;
+        if (slots[i].done) continue;
+
+        if (slots[i].easy != NULL)
+        {
+            curl_multi_remove_handle(multi, slots[i].easy);
+            curl_easy_cleanup(slots[i].easy);
+        }
+        curl_slist_free_all(slots[i].headers);
+        if (items[i].resp.curl_code == CURLE_OK) resp_set_error(&items[i].resp, CURLE_FAILED_INIT, "请求未完成");
     }
 
-    if (resp.status != REQUEST_HAVE_RES)
-    {
-        LOG_ERROR("跟随重定向后未获得认证页面, 状态: %d", resp.status);
-        return REQUEST_ERROR;
-    }
+    curl_multi_cleanup(multi);
+    free(slots);
+}
 
-    g_prog_status[tl_thread_idx].last_location_lock = true;
-    LOG_DEBUG("配置 %" PRIu8 " 获取认证配置 URL: %s", g_prog_status[tl_thread_idx].login_cfg.idx, g_prog_status[tl_thread_idx].last_location);
+http_resp_t http_post(const char* url, const char* const* headers, const char* data)
+{
+    http_post_item_t item;
 
-    get_school_ip_symbol(); // 获取校园网特征
-    return REQUEST_REDIRECT;
+    item.headers = headers;
+    item.data = data;
+    memset(&item.resp, 0, sizeof(item.resp));
+
+    http_post_batch(url, &item, 1, 1);
+    return item.resp;
+}
+
+void http_resp_free(http_resp_t* resp)
+{
+    if (resp == NULL) return;
+
+    free(resp->body_data);
+    resp->body_data = NULL;
+    resp->body_size = 0;
+    resp->http_code = 0;
+    resp->curl_code = CURLE_OK;
+    resp->error[0] = '\0';
 }
