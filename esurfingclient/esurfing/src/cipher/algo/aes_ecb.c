@@ -229,7 +229,7 @@ static void aes_ecb_destroy(cipher_interface_t* self)
     s_free(self);
 }
 
-cipher_interface_t* create_aes_ecb_linux_cipher(const uint8_t* key1, const uint8_t* key2)
+cipher_interface_t* create_aes_ecb_cipher(const uint8_t* key1, const uint8_t* key2)
 {
     if (!key1 || !key2) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));

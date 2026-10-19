@@ -19,8 +19,7 @@ static void print_menu()
 {
     printf("\n请选择工具功能:\n");
     printf("  1. 加解密文本\n");
-    printf("  2. 查找 Algo-ID\n");
-    printf("  3. 获取 Key/IV\n");
+    printf("  2. 查找 Algo-ID / 导出 Key/IV\n");
     printf("  0. 退出\n");
     printf("请输入选项: ");
 }
@@ -125,6 +124,57 @@ static bool init_dynamic_cipher(const char* algo_id)
 }
 
 /**
+ * @brief 选择加密/解密操作
+ * @param choice 输出选项
+ * @return 是否读取成功
+ */
+static bool prompt_cipher_operation(char* choice)
+{
+    for (;;)
+    {
+        printf("\n请选择操作:\n");
+        printf("  1. 加密\n");
+        printf("  2. 解密\n");
+        printf("  0. 返回\n");
+        printf("请输入选项: ");
+        if (read_line(choice, CHOICE_LEN) == false) return false;
+
+        trim_str(choice);
+        if (strcmp(choice, "0") == 0 || strcmp(choice, "1") == 0 || strcmp(choice, "2") == 0)
+        {
+            return true;
+        }
+        printf("输入无效, 请重新选择\n");
+    }
+}
+
+/**
+ * @brief 询问是否继续使用当前 Algo-ID
+ * @return true 继续, false 返回主菜单
+ */
+static bool prompt_continue_same_algo(void)
+{
+    char line[CHOICE_LEN];
+
+    for (;;)
+    {
+        printf("\n是否继续使用同一个 Algo-ID 进行加解密? (y/N): ");
+        if (read_line(line, sizeof(line)) == false) return false;
+
+        trim_str(line);
+        if (line[0] == '\0' || (line[1] == '\0' && (line[0] == 'n' || line[0] == 'N')))
+        {
+            return false;
+        }
+        if (line[1] == '\0' && (line[0] == 'y' || line[0] == 'Y'))
+        {
+            return true;
+        }
+        printf("输入无效, 请输入 y 或 n\n");
+    }
+}
+
+/**
  * @brief 文本加解密流程
  */
 static void cipher_tool()
@@ -132,7 +182,6 @@ static void cipher_tool()
     char algo_id[ALGO_ID_INPUT_LEN];
     char choice[CHOICE_LEN];
     char text[TEXT_INPUT_LEN];
-    char* result = NULL;
 
     printf("\n请输入 Algo-ID: ");
     if (read_line(algo_id, sizeof(algo_id)) == false) return;
@@ -145,20 +194,8 @@ static void cipher_tool()
         return;
     }
 
-    printf("\n请选择操作:\n");
-    printf("  1. 加密\n");
-    printf("  2. 解密\n");
-    printf("  0. 返回\n");
-    printf("请输入选项: ");
-    if (read_line(choice, sizeof(choice)) == false) return;
-
-    trim_str(choice);
+    if (prompt_cipher_operation(choice) == false) return;
     if (strcmp(choice, "0") == 0) return;
-    if (strcmp(choice, "1") != 0 && strcmp(choice, "2") != 0)
-    {
-        printf("输入无效\n");
-        return;
-    }
 
     if (init_cipher(algo_id) == false)
     {
@@ -169,24 +206,29 @@ static void cipher_tool()
         }
     }
 
-    printf("请输入要%s的文本: ", strcmp(choice, "1") == 0 ? "加密" : "解密");
-    if (read_line(text, sizeof(text)) == false)
+    for (;;)
     {
-        destroy_cipher_factory();
-        return;
-    }
+        char* result;
 
-    if (strcmp(choice, "1") == 0) result = session_encrypt(text);
-    else result = session_decrypt(text);
+        printf("请输入要%s的文本: ", strcmp(choice, "1") == 0 ? "加密" : "解密");
+        if (read_line(text, sizeof(text)) == false) break;
 
-    if (result == NULL)
-    {
-        printf("处理失败, 请检查 Algo-ID 与输入内容\n");
-    }
-    else
-    {
-        printf("%s后的文本:\n%s\n", strcmp(choice, "1") == 0 ? "加密" : "解密", result);
-        free(result);
+        if (strcmp(choice, "1") == 0) result = session_encrypt(text);
+        else result = session_decrypt(text);
+
+        if (result == NULL)
+        {
+            printf("处理失败, 请检查 Algo-ID 与输入内容\n");
+        }
+        else
+        {
+            printf("%s后的文本:\n%s\n", strcmp(choice, "1") == 0 ? "加密" : "解密", result);
+            free(result);
+        }
+
+        if (prompt_continue_same_algo() == false) break;
+        if (prompt_cipher_operation(choice) == false) break;
+        if (strcmp(choice, "0") == 0) break;
     }
 
     destroy_cipher_factory();
@@ -223,10 +265,6 @@ int main()
         else if (strcmp(choice, "2") == 0)
         {
             algo_finder_run();
-        }
-        else if (strcmp(choice, "3") == 0)
-        {
-            algo_key_iv_run();
         }
         else if (strcmp(choice, "0") == 0)
         {

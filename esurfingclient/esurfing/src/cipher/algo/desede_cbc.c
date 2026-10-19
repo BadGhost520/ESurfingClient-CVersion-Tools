@@ -251,7 +251,7 @@ static void desede_cbc_destroy(cipher_interface_t* self)
   }
 }
 
-cipher_interface_t* create_desede_cbc_linux_cipher(const uint8_t* key1, const uint8_t* key2,
+cipher_interface_t* create_desede_cbc_cipher(const uint8_t* key1, const uint8_t* key2,
                                                 const uint8_t* iv1, const uint8_t* iv2)
 {
   if (!key1 || !key2 || !iv1 || !iv2) return NULL;

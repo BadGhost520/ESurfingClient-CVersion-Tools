@@ -18,6 +18,8 @@
  * 每次请求只把 Client-ID 换成新的随机 UUID, 服务端会据此返回不同的 Algo-ID。
  */
 #define ALGO_TICKET_URL "http://14.146.227.141:7001/ticket.cgi?wlanuserip=172.19.211.166&wlanacip=14.148.0.67&portal_node=http://125.88.59.131:10002"
+#define ALGO_TICKET_BODY "tarce log algo auto compstr null value"
+_Static_assert(sizeof(ALGO_TICKET_BODY) - 1 == 38, "ticket body 长度必须是 38");
 #define ALGO_ZERO_ID "00000000-0000-0000-0000-000000000000"
 #define ALGO_CHECKSUM "9f89c84a559f573636a47ff8daed0d33"
 #define ALGO_ACCEPT "text/html,text/xml,application/xhtml+xml,application/x-javascript,*/*"
@@ -234,7 +236,7 @@ static bool prepare_ticket_batch(const char* ua, ticket_request_t* reqs, http_po
         reqs[i].headers[9] = NULL;
 
         items[i].headers = reqs[i].headers;
-        items[i].data = ALGO_ZERO_ID;
+        items[i].data = ALGO_TICKET_BODY;
         memset(&items[i].resp, 0, sizeof(items[i].resp));
     }
     return true;
@@ -352,9 +354,8 @@ static bool prompt_expected_count(size_t* expected)
     }
 }
 
-void algo_finder_run()
+static void run_finder_with_ua(const char* ua)
 {
-    char ua[ALGO_UA_LEN];
     find_mode_t mode;
     size_t count = 0;
     size_t expected = 0;
@@ -363,7 +364,6 @@ void algo_finder_run()
     algo_id_list_t list = {0};
     void (*old_sigint)(int) = NULL;
 
-    if (algo_prompt_ua(ua, sizeof(ua)) == false) return;
     if (prompt_mode("Algo-ID", true, &mode, &count) == false) return;
     if (prompt_expected_count(&expected) == false) return;
 
@@ -675,31 +675,32 @@ static void load_existing_ids(const char* path, string_set_t* set)
  */
 static bool is_fixed_algo_id(const char* algo_id)
 {
-    if (init_cipher(algo_id) == false) return false;
-
-    destroy_cipher_factory();
-    return true;
+    return is_fixed_cipher(algo_id);
 }
 
 /**
  * @brief 从动态 ZSM 中解析 key/iv 并转成十六进制
  */
 static bool parse_key_iv_from_zsm(const char* ua, const uint8_t* body, const size_t body_len,
-    char* key_hex, const size_t key_hex_size, char* iv_hex, const size_t iv_hex_size)
+    char* key_hex, const size_t key_hex_size, char* iv_hex, const size_t iv_hex_size,
+    int8_t* type_out)
 {
     uint8_t key[ZSM_KEY_MAX_LEN] = {0};
     uint8_t iv[ZSM_IV_MAX_LEN] = {0};
     size_t key_len = 0;
     size_t iv_len = 0;
+    int8_t cdy = -1;
     bool ok;
+
+    if (type_out != NULL) *type_out = -1;
 
     if (strstr(ua, "WinSVR") != NULL)
     {
-        ok = get_win_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len);
+        ok = get_win_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len, &cdy);
     }
     else if (strstr(ua, "iOSdy") != NULL || strstr(ua, "macdy") != NULL)
     {
-        ok = get_ios_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len);
+        ok = get_ios_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len, &cdy);
     }
     else
     {
@@ -724,21 +725,44 @@ static bool parse_key_iv_from_zsm(const char* ua, const uint8_t* body, const siz
     {
         snprintf(iv_hex, iv_hex_size, "%s", "(none)");
     }
+
+    if (type_out != NULL) *type_out = cdy;
     return true;
 }
 
-static bool write_key_iv_entry(FILE* fp, const size_t index, const char* id, const char* key_hex, const char* iv_hex)
+static const char* zsm_platform_name(const char* ua)
 {
+    if (strstr(ua, "WinSVR") != NULL) return "Windows";
+    if (strstr(ua, "macdy") != NULL) return "macOS";
+    if (strstr(ua, "iOSdy") != NULL) return "iOS";
+    return "Unknown";
+}
+
+static void format_type_text(const int8_t type, char* buf, const size_t len)
+{
+    if (type >= 0) snprintf(buf, len, "%d", type);
+    else snprintf(buf, len, "unknown");
+}
+
+static bool write_key_iv_entry(FILE* fp, const size_t index, const char* platform, const int8_t type,
+    const char* id, const char* key_hex, const char* iv_hex)
+{
+    char type_text[16];
+
     if (fp == NULL) return false;
 
-    if (fprintf(fp, "Index: %zu\nAlgo-ID: %s\nKey: %s\nIV: %s\n\n", index, id, key_hex, iv_hex) < 0) return false;
+    format_type_text(type, type_text, sizeof(type_text));
+    if (fprintf(fp, "Index: %zu\nPlatform: %s\nType: %s\nAlgo-ID: %s\nKey: %s\nIV: %s\n\n",
+            index, platform, type_text, id, key_hex, iv_hex) < 0)
+    {
+        return false;
+    }
     fflush(fp);
     return true;
 }
 
-void algo_key_iv_run(void)
+static void run_key_iv_with_ua(const char* ua)
 {
-    char ua[ALGO_UA_LEN];
     char path[KEY_IV_PATH_LEN];
     find_mode_t mode;
     size_t count = 0;
@@ -751,7 +775,6 @@ void algo_key_iv_run(void)
     FILE* fp = NULL;
     void (*old_sigint)(int) = NULL;
 
-    if (algo_prompt_ua(ua, sizeof(ua)) == false) return;
     if (prompt_mode("key/iv", false, &mode, &count) == false) return;
     if (prompt_expected_count(&expected) == false) return;
 
@@ -778,7 +801,7 @@ void algo_key_iv_run(void)
     fseek(fp, 0, SEEK_END);
     if (ftell(fp) == 0)
     {
-        fprintf(fp, "# Index / Algo-ID / Key / IV\n\n");
+        fprintf(fp, "# Index / Platform / Type / Algo-ID / Key / IV\n\n");
         fflush(fp);
     }
 
@@ -837,11 +860,16 @@ void algo_key_iv_run(void)
                     {
                         char key_hex[KEY_HEX_LEN];
                         char iv_hex[IV_HEX_LEN];
+                        char type_text[16];
+                        int8_t cdy = -1;
 
                         if (parse_key_iv_from_zsm(ua, (const uint8_t*)items[i].resp.body_data,
-                                items[i].resp.body_size, key_hex, sizeof(key_hex), iv_hex, sizeof(iv_hex)))
+                                items[i].resp.body_size, key_hex, sizeof(key_hex), iv_hex, sizeof(iv_hex), &cdy))
                         {
-                            if (write_key_iv_entry(fp, total_entries + 1, id, key_hex, iv_hex) == false)
+                            const char* platform = zsm_platform_name(ua);
+                            format_type_text(cdy, type_text, sizeof(type_text));
+
+                            if (write_key_iv_entry(fp, total_entries + 1, platform, cdy, id, key_hex, iv_hex) == false)
                             {
                                 printf("  [错误] 写入文件失败: %s\n", path);
                             }
@@ -850,7 +878,8 @@ void algo_key_iv_run(void)
                                 string_set_add(&seen, id);
                                 exported++;
                                 total_entries++;
-                                printf("  [新] #%zu %s\n       Key: %s\n       IV: %s\n", total_entries, id, key_hex, iv_hex);
+                                printf("  [新] #%zu %s\n       Platform: %s\n       Type: %s\n       Key: %s\n       IV: %s\n",
+                                    total_entries, id, platform, type_text, key_hex, iv_hex);
                             }
                         }
                         else if (is_fixed_algo_id(id))
@@ -899,4 +928,46 @@ void algo_key_iv_run(void)
     fclose(fp);
     printf("\n获取结束: 共查找 %zu 次, 导出 %zu 条, 文件: %s\n", attempts, exported, path);
     string_set_free(&seen);
+}
+
+/**
+ * @brief 询问是否导出 Key/IV 等信息
+ */
+static bool prompt_export_switch(bool* export_key_iv)
+{
+    char line[16];
+
+    if (export_key_iv == NULL) return false;
+
+    for (;;)
+    {
+        printf("\n是否导出 Key/IV 等信息? (y/N): ");
+        if (read_line(line, sizeof(line)) == false) return false;
+
+        trim_str(line);
+        if (line[0] == '\0' || (line[1] == '\0' && (line[0] == 'n' || line[0] == 'N')))
+        {
+            *export_key_iv = false;
+            return true;
+        }
+        if (line[1] == '\0' && (line[0] == 'y' || line[0] == 'Y'))
+        {
+            *export_key_iv = true;
+            return true;
+        }
+
+        printf("输入无效, 请输入 y 或 n\n");
+    }
+}
+
+void algo_finder_run(void)
+{
+    char ua[ALGO_UA_LEN];
+    bool export_key_iv = false;
+
+    if (algo_prompt_ua(ua, sizeof(ua)) == false) return;
+    if (prompt_export_switch(&export_key_iv) == false) return;
+
+    if (export_key_iv) run_key_iv_with_ua(ua);
+    else run_finder_with_ua(ua);
 }

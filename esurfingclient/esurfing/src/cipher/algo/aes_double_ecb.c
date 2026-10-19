@@ -6,26 +6,26 @@
 #include <string.h>
 
 /* ------------------------------------------------------------------
- * Algo Id: BB2EA626-590B-4C42-82BE-E052FCBBB88E / DEABB8C8-A2BC-48CA-8ED0-8CDF1BD62F61
- *          (Double-layer AES-128-CBC, Android)
- * Two AES-128-CBC layers (32-byte key = two 16-byte layers), custom
+ * Algo Id: DEABB8C8-A2BC-48CA-8ED0-8CDF1BD62F61 (Double-layer AES-128-ECB, Android)
+ * Two AES-128-ECB layers (32-byte key = two 16-byte layers), custom
  * key expansion (transposed key + 10 rounds of S-box/Rcon mixing ->
- * 176-byte schedule), standard AES round structure, row-major state,
- * IV-prefix mode with PKCS7 padding.
+ * 176-byte schedule), standard AES round structure, row-major state.
+ * NOTE: unlike BB2EA626 (CBC + IV prefix), this module calls the shared
+ * core with mode=1: no CBC chaining, no IV prefix (ECB), zero padding.
  * Translated from IDA pseudocode (sub_1FA0 keysched / sub_27F0 block /
- * sub_3444 double-layer enc / sub_2ED8 layer dec / sub_34D8 double dec).
- * Verified against the real .so via the unicorn emulator.
+ * sub_3444 double-layer enc mode=1 / sub_2ED8 layer dec mode=1 /
+ * sub_3F7C dec wrapper).
+ * Verified against the real .so via the unicorn emulator (mode=1).
  * ------------------------------------------------------------------ */
 
-#define AES_DOUBLE_KEY_SIZE 32
-#define AES_DOUBLE_BLOCK_SIZE 16
+#define AES_DOUBLE_ECB_KEY_SIZE 32
+#define AES_DOUBLE_ECB_BLOCK_SIZE 16
 
 typedef struct {
-    uint8_t key[AES_DOUBLE_KEY_SIZE];
-    uint8_t iv[AES_DOUBLE_BLOCK_SIZE];
-} aes_double_cbc_android_data_t;
+    uint8_t key[AES_DOUBLE_ECB_KEY_SIZE];
+} aes_double_ecb_android_data_t;
 
-static const uint8_t AES_DOUBLE_S[256] = {
+static const uint8_t AES_DOUBLE_ECB_S[256] = {
     0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5,0x30,0x01,0x67,0x2b,0xfe,0xd7,0xab,0x76,
     0xca,0x82,0xc9,0x7d,0xfa,0x59,0x47,0xf0,0xad,0xd4,0xa2,0xaf,0x9c,0xa4,0x72,0xc0,
     0xb7,0xfd,0x93,0x26,0x36,0x3f,0xf7,0xcc,0x34,0xa5,0xe5,0xf1,0x71,0xd8,0x31,0x15,
@@ -43,7 +43,7 @@ static const uint8_t AES_DOUBLE_S[256] = {
     0xe1,0xf8,0x98,0x11,0x69,0xd9,0x8e,0x94,0x9b,0x1e,0x87,0xe9,0xce,0x55,0x28,0xdf,
     0x8c,0xa1,0x89,0x0d,0xbf,0xe6,0x42,0x68,0x41,0x99,0x2d,0x0f,0xb0,0x54,0xbb,0x16
 };
-static const uint8_t AES_DOUBLE_INV_S[256] = {
+static const uint8_t AES_DOUBLE_ECB_INV_S[256] = {
     0x52,0x09,0x6a,0xd5,0x30,0x36,0xa5,0x38,0xbf,0x40,0xa3,0x9e,0x81,0xf3,0xd7,0xfb,
     0x7c,0xe3,0x39,0x82,0x9b,0x2f,0xff,0x87,0x34,0x8e,0x43,0x44,0xc4,0xde,0xe9,0xcb,
     0x54,0x7b,0x94,0x32,0xa6,0xc2,0x23,0x3d,0xee,0x4c,0x95,0x0b,0x42,0xfa,0xc3,0x4e,
@@ -61,10 +61,10 @@ static const uint8_t AES_DOUBLE_INV_S[256] = {
     0xa0,0xe0,0x3b,0x4d,0xae,0x2a,0xf5,0xb0,0xc8,0xeb,0xbb,0x3c,0x83,0x53,0x99,0x61,
     0x17,0x2b,0x04,0x7e,0xba,0x77,0xd6,0x26,0xe1,0x69,0x14,0x63,0x55,0x21,0x0c,0x7d
 };
-static const uint8_t AES_DOUBLE_RC[10] = {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36};
+static const uint8_t AES_DOUBLE_ECB_RC[10] = {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36};
 
-static uint8_t aes_double_xtime(uint8_t x) { return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1B : 0)); }
-static uint8_t aes_double_mul(uint8_t a, uint8_t b)
+static uint8_t aes_ecb_xtime(uint8_t x) { return (uint8_t)((x << 1) ^ ((x & 0x80) ? 0x1B : 0)); }
+static uint8_t aes_ecb_mul(uint8_t a, uint8_t b)
 {
     uint8_t p = 0;
     for (int i = 0; i < 8; i++)
@@ -76,7 +76,7 @@ static uint8_t aes_double_mul(uint8_t a, uint8_t b)
 }
 
 /* sub_1FA0: custom key expansion -> 176-byte schedule */
-static void aes_double_key_expand(const uint8_t key[16], uint8_t sk[176])
+static void aes_ecb_key_expand(const uint8_t key[16], uint8_t sk[176])
 {
     sk[0] = key[0];  sk[1] = key[4];  sk[2] = key[8];  sk[3] = key[12];
     sk[4] = key[1];  sk[5] = key[5];  sk[6] = key[9];  sk[7] = key[13];
@@ -85,12 +85,12 @@ static void aes_double_key_expand(const uint8_t key[16], uint8_t sk[176])
     uint8_t *v3 = sk + 15;
     for (int v2 = 0; v2 < 10; ++v2)
     {
-        const uint8_t v4 = AES_DOUBLE_S[v3[-8]] ^ AES_DOUBLE_RC[v2];
-        const uint8_t v5 = AES_DOUBLE_S[v3[-4]] ^ v3[-11];
+        const uint8_t v4 = AES_DOUBLE_ECB_S[v3[-8]] ^ AES_DOUBLE_ECB_RC[v2];
+        const uint8_t v5 = AES_DOUBLE_ECB_S[v3[-4]] ^ v3[-11];
         const uint8_t v6 = v3[-15];
-        const uint8_t v7 = AES_DOUBLE_S[v3[-12]] ^ v3[-3];
+        const uint8_t v7 = AES_DOUBLE_ECB_S[v3[-12]] ^ v3[-3];
         const uint8_t v8 = v3[-10];
-        const uint8_t v9 = AES_DOUBLE_S[v3[0]];
+        const uint8_t v9 = AES_DOUBLE_ECB_S[v3[0]];
         v3[5] = v5;
         const uint8_t v10 = v3[-7];
         const uint8_t v11 = v5 ^ v8;
@@ -136,7 +136,7 @@ static void aes_double_key_expand(const uint8_t key[16], uint8_t sk[176])
 }
 
 /* sub_27F0: AES-128 block encrypt; state row-major, in/out column-major */
-static void aes_double_block_encrypt(const uint8_t sk[176], const uint8_t in[16], uint8_t out[16])
+static void aes_ecb_block_encrypt(const uint8_t sk[176], const uint8_t in[16], uint8_t out[16])
 {
     uint8_t s[16];
     for (int r = 0; r < 4; ++r)
@@ -145,7 +145,7 @@ static void aes_double_block_encrypt(const uint8_t sk[176], const uint8_t in[16]
     for (int i = 0; i < 16; ++i) s[i] ^= sk[i];
     for (int rnd = 1; rnd <= 10; ++rnd)
     {
-        for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_S[s[i]];
+        for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_ECB_S[s[i]];
         {
             uint8_t t[16];
             for (int r = 0; r < 4; ++r)
@@ -158,10 +158,10 @@ static void aes_double_block_encrypt(const uint8_t sk[176], const uint8_t in[16]
             for (int c = 0; c < 4; ++c)
             {
                 const uint8_t a0 = s[c], a1 = s[4 + c], a2 = s[8 + c], a3 = s[12 + c];
-                s[c] = aes_double_xtime(a0) ^ (aes_double_xtime(a1) ^ a1) ^ a2 ^ a3;
-                s[4 + c] = a0 ^ aes_double_xtime(a1) ^ (aes_double_xtime(a2) ^ a2) ^ a3;
-                s[8 + c] = a0 ^ a1 ^ aes_double_xtime(a2) ^ (aes_double_xtime(a3) ^ a3);
-                s[12 + c] = (aes_double_xtime(a0) ^ a0) ^ a1 ^ a2 ^ aes_double_xtime(a3);
+                s[c] = aes_ecb_xtime(a0) ^ (aes_ecb_xtime(a1) ^ a1) ^ a2 ^ a3;
+                s[4 + c] = a0 ^ aes_ecb_xtime(a1) ^ (aes_ecb_xtime(a2) ^ a2) ^ a3;
+                s[8 + c] = a0 ^ a1 ^ aes_ecb_xtime(a2) ^ (aes_ecb_xtime(a3) ^ a3);
+                s[12 + c] = (aes_ecb_xtime(a0) ^ a0) ^ a1 ^ a2 ^ aes_ecb_xtime(a3);
             }
         }
         for (int i = 0; i < 16; ++i) s[i] ^= sk[16 * rnd + i];
@@ -172,7 +172,7 @@ static void aes_double_block_encrypt(const uint8_t sk[176], const uint8_t in[16]
 }
 
 /* AES-128 block decrypt (standard inverse rounds, row-major state) */
-static void aes_double_block_decrypt(const uint8_t sk[176], const uint8_t in[16], uint8_t out[16])
+static void aes_ecb_block_decrypt(const uint8_t sk[176], const uint8_t in[16], uint8_t out[16])
 {
     uint8_t s[16];
     for (int r = 0; r < 4; ++r)
@@ -181,7 +181,6 @@ static void aes_double_block_decrypt(const uint8_t sk[176], const uint8_t in[16]
     for (int i = 0; i < 16; ++i) s[i] ^= sk[160 + i];
     for (int rnd = 9; rnd >= 1; --rnd)
     {
-        /* inv shift rows: t[r][c] = s[r][(c - r) & 3] */
         {
             uint8_t t[16];
             for (int r = 0; r < 4; ++r)
@@ -189,16 +188,15 @@ static void aes_double_block_decrypt(const uint8_t sk[176], const uint8_t in[16]
                     t[r * 4 + c] = s[r * 4 + ((c - r + 4) & 3)];
             memcpy(s, t, 16);
         }
-        for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_INV_S[s[i]];
+        for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_ECB_INV_S[s[i]];
         for (int i = 0; i < 16; ++i) s[i] ^= sk[16 * rnd + i];
-        /* inv mix columns */
         for (int c = 0; c < 4; ++c)
         {
             const uint8_t a0 = s[c], a1 = s[4 + c], a2 = s[8 + c], a3 = s[12 + c];
-            s[c]     = aes_double_mul(0x0e, a0) ^ aes_double_mul(0x0b, a1) ^ aes_double_mul(0x0d, a2) ^ aes_double_mul(0x09, a3);
-            s[4 + c] = aes_double_mul(0x09, a0) ^ aes_double_mul(0x0e, a1) ^ aes_double_mul(0x0b, a2) ^ aes_double_mul(0x0d, a3);
-            s[8 + c] = aes_double_mul(0x0d, a0) ^ aes_double_mul(0x09, a1) ^ aes_double_mul(0x0e, a2) ^ aes_double_mul(0x0b, a3);
-            s[12 + c] = aes_double_mul(0x0b, a0) ^ aes_double_mul(0x0d, a1) ^ aes_double_mul(0x09, a2) ^ aes_double_mul(0x0e, a3);
+            s[c]     = aes_ecb_mul(0x0e, a0) ^ aes_ecb_mul(0x0b, a1) ^ aes_ecb_mul(0x0d, a2) ^ aes_ecb_mul(0x09, a3);
+            s[4 + c] = aes_ecb_mul(0x09, a0) ^ aes_ecb_mul(0x0e, a1) ^ aes_ecb_mul(0x0b, a2) ^ aes_ecb_mul(0x0d, a3);
+            s[8 + c] = aes_ecb_mul(0x0d, a0) ^ aes_ecb_mul(0x09, a1) ^ aes_ecb_mul(0x0e, a2) ^ aes_ecb_mul(0x0b, a3);
+            s[12 + c] = aes_ecb_mul(0x0b, a0) ^ aes_ecb_mul(0x0d, a1) ^ aes_ecb_mul(0x09, a2) ^ aes_ecb_mul(0x0e, a3);
         }
     }
     {
@@ -208,111 +206,94 @@ static void aes_double_block_decrypt(const uint8_t sk[176], const uint8_t in[16]
                 t[r * 4 + c] = s[r * 4 + ((c - r + 4) & 3)];
         memcpy(s, t, 16);
     }
-    for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_INV_S[s[i]];
+    for (int i = 0; i < 16; ++i) s[i] = AES_DOUBLE_ECB_INV_S[s[i]];
     for (int i = 0; i < 16; ++i) s[i] ^= sk[i];
     for (int r = 0; r < 4; ++r)
         for (int c = 0; c < 4; ++c)
             out[c * 4 + r] = s[r * 4 + c];
 }
 
-/* one layer (sub_27F0) with a4=0: IV-prefixed CBC */
-static uint8_t* aes_double_layer_encrypt(const uint8_t key[16], const uint8_t* data, int len,
-                                         const uint8_t iv[16], int* out_len)
+/* one ECB layer (sub_27F0 mode=1): zero pad to 16, no IV prefix, no CBC */
+static uint8_t* aes_ecb_layer_encrypt(const uint8_t key[16], const uint8_t* data, int len, int* out_len)
 {
     int total = (len + 15) & ~15;
     if (total == 0) total = 16;
-    uint8_t *buf = s_calloc(1, (size_t)total + 32);
+    uint8_t *buf = s_calloc(1, (size_t)total);
     if (!buf) return NULL;
-    memcpy(buf + 16, data, (size_t)len);
-    memcpy(buf, iv, 16);
+    memcpy(buf, data, (size_t)len);
     uint8_t sk[176];
-    aes_double_key_expand(key, sk);
-    uint8_t prev[16];
-    memcpy(prev, iv, 16);
+    aes_ecb_key_expand(key, sk);
     for (int off = 0; off < total; off += 16)
-    {
-        uint8_t t[16];
-        for (int i = 0; i < 16; ++i) t[i] = buf[16 + off + i] ^ prev[i];
-        aes_double_block_encrypt(sk, t, buf + 16 + off);
-        memcpy(prev, buf + 16 + off, 16);
-    }
-    *out_len = total + 16;
-    return buf;
-}
-
-/* one layer decrypt (sub_2ED8 mode 0): IV-prefixed CBC, strip the 16-byte IV prefix */
-static uint8_t* aes_double_layer_decrypt(const uint8_t key[16], const uint8_t* data, int len,
-                                         int* out_len)
-{
-    if ((len & 0xF) != 0 || len < 32) return NULL;
-    const int total = len - 16;
-    uint8_t *buf = s_malloc((size_t)total);
-    if (!buf) return NULL;
-    uint8_t sk[176];
-    aes_double_key_expand(key, sk);
-    uint8_t prev[16];
-    memcpy(prev, data, 16);
-    for (int off = 0; off < total; off += 16)
-    {
-        uint8_t dec[16];
-        aes_double_block_decrypt(sk, data + 16 + off, dec);
-        for (int i = 0; i < 16; ++i) buf[off + i] = dec[i] ^ prev[i];
-        memcpy(prev, data + 16 + off, 16);
-    }
+        aes_ecb_block_encrypt(sk, buf + off, buf + off);
     *out_len = total;
     return buf;
 }
 
-/* sub_3444: double-layer encrypt */
-static uint8_t* aes_double_encrypt_raw(const uint8_t* key, const uint8_t* iv, const uint8_t* data,
-                                       const size_t data_len, size_t* output_len)
+/* one ECB layer decrypt (sub_2ED8 mode=1): no IV prefix, no CBC */
+static uint8_t* aes_ecb_layer_decrypt(const uint8_t key[16], const uint8_t* data, int len, int* out_len)
+{
+    if ((len & 0xF) != 0 || len < 16) return NULL;
+    uint8_t *buf = s_malloc((size_t)len);
+    if (!buf) return NULL;
+    memcpy(buf, data, (size_t)len);
+    uint8_t sk[176];
+    aes_ecb_key_expand(key, sk);
+    for (int off = 0; off < len; off += 16)
+        aes_ecb_block_decrypt(sk, buf + off, buf + off);
+    *out_len = len;
+    return buf;
+}
+
+/* sub_3444 mode=1: double-layer ECB encrypt */
+static uint8_t* aes_ecb_double_encrypt_raw(const uint8_t* key, const uint8_t* data,
+                                           const size_t data_len, size_t* output_len)
 {
     int l1 = 0;
-    uint8_t *m1 = aes_double_layer_encrypt(key, data, (int)data_len, iv, &l1);
+    uint8_t *m1 = aes_ecb_layer_encrypt(key, data, (int)data_len, &l1);
     if (!m1) return NULL;
     int l2 = 0;
-    uint8_t *m2 = aes_double_layer_encrypt(key + 16, m1, l1, iv, &l2);
+    uint8_t *m2 = aes_ecb_layer_encrypt(key + 16, m1, l1, &l2);
     s_free(m1);
     *output_len = (size_t)l2;
     return m2;
 }
 
-/* sub_34D8: double-layer decrypt (layer2 first, then layer1) */
-static uint8_t* aes_double_decrypt_raw(const uint8_t* key, const uint8_t* data,
-                                       const size_t data_len, size_t* output_len)
+/* sub_3F7C flow: double-layer ECB decrypt (layer2 first, then layer1) */
+static uint8_t* aes_ecb_double_decrypt_raw(const uint8_t* key, const uint8_t* data,
+                                           const size_t data_len, size_t* output_len)
 {
     int l1 = 0;
-    uint8_t *m1 = aes_double_layer_decrypt(key + 16, data, (int)data_len, &l1);
+    uint8_t *m1 = aes_ecb_layer_decrypt(key + 16, data, (int)data_len, &l1);
     if (!m1) return NULL;
     int l0 = 0;
-    uint8_t *pt = aes_double_layer_decrypt(key, m1, l1, &l0);
+    uint8_t *pt = aes_ecb_layer_decrypt(key, m1, l1, &l0);
     s_free(m1);
     *output_len = (size_t)l0;
     return pt;
 }
 
-static char* aes_double_cbc_encrypt(cipher_interface_t* self, const char* text)
+static char* aes_double_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if(!self || !text) return NULL;
-    const aes_double_cbc_android_data_t* d = self->private_data;
+    const aes_double_ecb_android_data_t* d = self->private_data;
     const size_t text_len = strlen(text);
-    size_t out_len=0; uint8_t* out = aes_double_encrypt_raw(d->key, d->iv, (const uint8_t*)text, text_len, &out_len);
+    size_t out_len=0; uint8_t* out = aes_ecb_double_encrypt_raw(d->key, (const uint8_t*)text, text_len, &out_len);
     if(!out) return NULL;
     char* hex = bytes_2_hex(out, out_len);
     s_free(out);
     return hex;
 }
 
-static char* aes_double_cbc_decrypt(cipher_interface_t* self, const char* hex)
+static char* aes_double_ecb_decrypt(cipher_interface_t* self, const char* hex)
 {
     if(!self || !hex) return NULL;
-    const aes_double_cbc_android_data_t* d = self->private_data;
+    const aes_double_ecb_android_data_t* d = self->private_data;
     size_t bytes_len=0; uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
     if(!bytes) return NULL;
-    size_t out_len=0; uint8_t* out = aes_double_decrypt_raw(d->key, bytes, bytes_len, &out_len);
+    size_t out_len=0; uint8_t* out = aes_ecb_double_decrypt_raw(d->key, bytes, bytes_len, &out_len);
     s_free(bytes);
     if(!out) return NULL;
-    /* zero-padded (not PKCS7): strip trailing zeros, keep as C string */
+    /* zero-padded: strip trailing zeros, keep as C string */
     while(out_len > 0 && out[out_len - 1] == 0) out_len--;
     char* result = s_malloc(out_len + 1);
     memcpy(result, out, out_len);
@@ -321,7 +302,7 @@ static char* aes_double_cbc_decrypt(cipher_interface_t* self, const char* hex)
     return result;
 }
 
-static void aes_double_cbc_destroy(cipher_interface_t* self)
+static void aes_double_ecb_destroy(cipher_interface_t* self)
 {
     if(self)
     {
@@ -330,16 +311,15 @@ static void aes_double_cbc_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_aes_double_cbc_android_cipher(const uint8_t* key, const uint8_t* iv)
+cipher_interface_t* create_aes_double_ecb_cipher(const uint8_t* key)
 {
-    if(!key || !iv) return NULL;
+    if(!key) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));
-    aes_double_cbc_android_data_t* d = s_malloc(sizeof(aes_double_cbc_android_data_t));
-    memcpy(d->key, key, AES_DOUBLE_KEY_SIZE);
-    memcpy(d->iv, iv, AES_DOUBLE_BLOCK_SIZE);
-    ci->encrypt = aes_double_cbc_encrypt;
-    ci->decrypt = aes_double_cbc_decrypt;
-    ci->destroy = aes_double_cbc_destroy;
+    aes_double_ecb_android_data_t* d = s_malloc(sizeof(aes_double_ecb_android_data_t));
+    memcpy(d->key, key, AES_DOUBLE_ECB_KEY_SIZE);
+    ci->encrypt = aes_double_ecb_encrypt;
+    ci->decrypt = aes_double_ecb_decrypt;
+    ci->destroy = aes_double_ecb_destroy;
     ci->private_data = d;
     return ci;
 }

@@ -6,7 +6,7 @@
 
 typedef struct {
     uint8_t key[SM4_KEY_SIZE];
-} sm4_ecb_android_old_data_t;
+} sm4_ecb_data_t;
 
 static const uint8_t SM4_SBOX[256] = {
     0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05,
@@ -182,7 +182,7 @@ static uint8_t* sm4_decrypt_ecb(const uint8_t* key, const uint8_t* ciphertext,
 static char* sm4_ecb_encrypt(cipher_interface_t* self, const char* text)
 {
     if (!self || !text) return NULL;
-    sm4_ecb_android_old_data_t* data = self->private_data;
+    sm4_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
     const size_t text_len = strlen(text);
     size_t output_len;
@@ -197,7 +197,7 @@ static char* sm4_ecb_encrypt(cipher_interface_t* self, const char* text)
 static char* sm4_ecb_decrypt(cipher_interface_t* self, const char* hex)
 {
     if (!self || !hex) return NULL;
-    sm4_ecb_android_old_data_t* data = self->private_data;
+    sm4_ecb_data_t* data = self->private_data;
     if (!data) return NULL;
     size_t bytes_len;
     uint8_t* bytes = hex_2_bytes(hex, &bytes_len);
@@ -222,11 +222,11 @@ static void sm4_ecb_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_sm4_ecb_android_old_cipher(const uint8_t* key)
+cipher_interface_t* create_sm4_ecb_cipher(const uint8_t* key)
 {
     if (!key) return NULL;
     cipher_interface_t* cipher = s_malloc(sizeof(cipher_interface_t));
-    sm4_ecb_android_old_data_t* data = s_malloc(sizeof(sm4_ecb_android_old_data_t));
+    sm4_ecb_data_t* data = s_malloc(sizeof(sm4_ecb_data_t));
     memcpy(data->key, key, SM4_KEY_SIZE);
     cipher->encrypt = sm4_ecb_encrypt;
     cipher->decrypt = sm4_ecb_decrypt;

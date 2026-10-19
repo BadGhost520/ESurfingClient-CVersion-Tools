@@ -258,7 +258,7 @@ static void snow3g_variant_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_snow3g_variant_android_cipher(const uint8_t* key, const uint8_t* iv)
+cipher_interface_t* create_snow3g_variant_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));

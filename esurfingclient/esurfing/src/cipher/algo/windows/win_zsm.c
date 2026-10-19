@@ -263,25 +263,25 @@ static cipher_interface_t* win_create_cipher(const int8_t type,
     {
     case 1:
         win_pad_copy(k, 32, key, key_len);
-        return create_aes_double_ecb_android_cipher(k);
+        return create_aes_double_ecb_cipher(k);
     case 2:
         win_pad_copy(k, 32, key, key_len);
         win_pad_copy(v, 16, iv, iv_len);
-        return create_aes_double_cbc_android_cipher(k, v);
+        return create_aes_double_cbc_cipher(k, v);
     case 5:
         win_pad_copy(k, 48, key, key_len);
-        return create_tea_triple_ecb_android_cipher(k);
+        return create_tea_triple_ecb_cipher(k);
     case 6:
         win_pad_copy(k, 48, key, key_len);
         win_pad_copy(v, 8, iv, iv_len);
-        return create_tea_triple_cbc_android_cipher(k, v);
+        return create_tea_triple_cbc_cipher(k, v);
     case 7:
         win_pad_copy(k, 16, key, key_len);
-        return create_sm4_variant_ecb_android_cipher(k);
+        return create_sm4_variant_ecb_cipher(k);
     case 8:
         win_pad_copy(k, 16, key, key_len);
         win_pad_copy(v, 16, iv, iv_len);
-        return create_sm4_variant_cbc_android_cipher(k, v);
+        return create_sm4_variant_cbc_cipher(k, v);
     default:
         return NULL;
     }
@@ -423,7 +423,8 @@ bool init_win_cipher_from_zsm(const uint8_t* data, const size_t length, char* al
 }
 
 bool get_win_zsm_key_iv(const uint8_t* data, const size_t length, char* algo_id_out,
-    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out)
+    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out,
+    int8_t* type_out)
 {
     uint8_t key[WIN_KEY_MAX];
     uint8_t iv[WIN_IV_MAX];
@@ -443,5 +444,6 @@ bool get_win_zsm_key_iv(const uint8_t* data, const size_t length, char* algo_id_
         memcpy(iv_out, iv, iv_len);
         *iv_len_out = iv_len;
     }
+    if (type_out != NULL) *type_out = cdy;
     return true;
 }

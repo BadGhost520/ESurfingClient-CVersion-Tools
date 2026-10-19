@@ -159,7 +159,7 @@ static void tea_triple_cbc_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_tea_triple_cbc_android_cipher(const uint8_t* key, const uint8_t* iv)
+cipher_interface_t* create_tea_triple_cbc_cipher(const uint8_t* key, const uint8_t* iv)
 {
     if(!key || !iv) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));

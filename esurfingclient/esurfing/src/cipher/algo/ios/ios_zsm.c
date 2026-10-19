@@ -315,38 +315,38 @@ static cipher_interface_t* create_ios_ocode_cipher(const int8_t type, const uint
     {
     case 1: /* 双层 AES-128-ECB */
         copy_padded(key_buf, 32, key, key_len, "key");
-        return create_aes_double_ecb_android_cipher(key_buf);
+        return create_aes_double_ecb_cipher(key_buf);
     case 2: /* 双层 AES-128-CBC */
         copy_padded(key_buf, 32, key, key_len, "key");
         copy_padded(iv_buf, 16, iv, iv_len, "iv");
-        return create_aes_double_cbc_android_cipher(key_buf, iv_buf);
+        return create_aes_double_cbc_cipher(key_buf, iv_buf);
     case 3: /* 六轮 DES-ECB: iOS 顺序是 K4,K5,K6,K1,K2,K3, 旋转后复用 Android 实现 */
         copy_padded(key_buf, 48, key, key_len, "key");
         memcpy(rotated, key_buf + 24, 24);
         memcpy(rotated + 24, key_buf, 24);
-        return create_des_ecb_six_android_cipher(rotated);
+        return create_des_ecb_six_cipher(rotated);
     case 4: /* 双层 3DES-CBC, 第一轮 key[24:48], 第二轮 key[0:24] */
         copy_padded(key_buf, 48, key, key_len, "key");
         copy_padded(iv_buf, 8, iv, iv_len, "iv");
-        return create_desede_double_cbc_android_cipher(key_buf, iv_buf);
+        return create_desede_double_cbc_cipher(key_buf, iv_buf);
     case 5: /* 三层改 TEA-ECB */
         copy_padded(key_buf, 48, key, key_len, "key");
-        return create_tea_triple_ecb_android_cipher(key_buf);
+        return create_tea_triple_ecb_cipher(key_buf);
     case 6: /* 三层改 TEA-CBC */
         copy_padded(key_buf, 48, key, key_len, "key");
         copy_padded(iv_buf, 8, iv, iv_len, "iv");
-        return create_tea_triple_cbc_android_cipher(key_buf, iv_buf);
+        return create_tea_triple_cbc_cipher(key_buf, iv_buf);
     case 7: /* SM4-ECB */
         copy_padded(key_buf, 16, key, key_len, "key");
-        return create_sm4_variant_ecb_android_cipher(key_buf);
+        return create_sm4_variant_ecb_cipher(key_buf);
     case 8: /* SM4-CBC */
         copy_padded(key_buf, 16, key, key_len, "key");
         copy_padded(iv_buf, 16, iv, iv_len, "iv");
-        return create_sm4_variant_cbc_android_cipher(key_buf, iv_buf);
+        return create_sm4_variant_cbc_cipher(key_buf, iv_buf);
     case 9: /* SNOW3G 变体 */
         copy_padded(key_buf, 16, key, key_len, "key");
         copy_padded(iv_buf, 16, iv, iv_len, "iv");
-        return create_snow3g_variant_android_cipher(key_buf, iv_buf);
+        return create_snow3g_variant_cipher(key_buf, iv_buf);
     default:
         return NULL;
     }
@@ -591,7 +591,8 @@ bool init_ios_cipher_from_blob(const int8_t type, ios_zsm_blob_t blob)
 }
 
 bool get_ios_zsm_key_iv(const uint8_t* data, const size_t length, char* algo_id_out,
-    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out)
+    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out,
+    int8_t* type_out)
 {
     ios_zsm_blob_t blob;
 
@@ -604,6 +605,7 @@ bool get_ios_zsm_key_iv(const uint8_t* data, const size_t length, char* algo_id_
     }
 
     if (algo_id_out != NULL) snprintf(algo_id_out, ALGO_ID_LEN, "%s", blob.algo_id);
+    if (type_out != NULL) *type_out = parse_cdy_type(blob.js);
 
     if (key_out != NULL && key_len_out != NULL)
     {

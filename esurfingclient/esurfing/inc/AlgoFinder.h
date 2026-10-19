@@ -21,14 +21,9 @@
 bool algo_prompt_ua(char* ua, size_t ua_len);
 
 /**
- * @brief 进入 Algo-ID 查找流程 (包含交互提示)
+ * @brief 进入 Algo-ID 查找流程 (可选择是否导出 Key/IV)
  */
 void algo_finder_run();
-
-/**
- * @brief 查找 Algo-ID 并解析动态 ZSM 中的 key/iv, 导出到 txt 文件
- */
-void algo_key_iv_run(void);
 
 /**
  * @brief 循环请求 ticket 接口, 直到响应中的 Algo-ID 与目标一致

@@ -34,31 +34,27 @@ find_package(CURL REQUIRED)
 
 add_executable(ESurfingClient
         third_party/7z/LzmaDec.c
-        src/cipher/algo/android/aes_double_cbc_android.c
-        src/cipher/algo/android/aes_double_ecb_android.c
-        src/cipher/algo/android/des_ecb_six_android.c
-        src/cipher/algo/android/desede_double_cbc_android.c
-        src/cipher/algo/android/sm4_variant_cbc_android.c
-        src/cipher/algo/android/sm4_variant_ecb_android.c
-        src/cipher/algo/android/snow3g_variant_android.c
-        src/cipher/algo/android/tea_triple_cbc_android.c
-        src/cipher/algo/android/tea_triple_ecb_android.c
+        src/cipher/algo/aes_double_cbc.c
+        src/cipher/algo/aes_double_ecb.c
+        src/cipher/algo/des_ecb_six.c
+        src/cipher/algo/desede_double_cbc.c
+        src/cipher/algo/sm4_variant_cbc.c
+        src/cipher/algo/sm4_variant_ecb.c
+        src/cipher/algo/snow3g_variant.c
+        src/cipher/algo/tea_triple_cbc.c
+        src/cipher/algo/tea_triple_ecb.c
         src/cipher/algo/ios/ios_zsm.c
-        src/cipher/algo/legacy/aes_cbc_android_old.c
-        src/cipher/algo/legacy/aes_ecb_android_old.c
-        src/cipher/algo/legacy/desede_cbc_android_old.c
-        src/cipher/algo/legacy/desede_ecb_android_old.c
-        src/cipher/algo/legacy/mod_xtea_android_old.c
-        src/cipher/algo/legacy/mod_xtea_iv_android_old.c
-        src/cipher/algo/legacy/sm4_cbc_android_old.c
-        src/cipher/algo/legacy/sm4_ecb_android_old.c
-        src/cipher/algo/legacy/zuc_android_old.c
-        src/cipher/algo/linux/mod_xtea_cbc_triple_linux.c
-        src/cipher/algo/linux/des_ecb_six_linux.c
-        src/cipher/algo/linux/desede_cbc_linux.c
-        src/cipher/algo/linux/mod_xtea_linux.c
-        src/cipher/algo/linux/aes_ecb_linux.c
-        src/cipher/algo/linux/aes_cbc_linux.c
+        src/cipher/algo/desede_ecb.c
+        src/cipher/algo/mod_xtea_iv.c
+        src/cipher/algo/sm4_cbc.c
+        src/cipher/algo/sm4_ecb.c
+        src/cipher/algo/zuc.c
+        src/cipher/algo/mod_xtea_cbc_triple.c
+        src/cipher/algo/des_ecb_six_keys.c
+        src/cipher/algo/desede_cbc.c
+        src/cipher/algo/mod_xtea.c
+        src/cipher/algo/aes_ecb.c
+        src/cipher/algo/aes_cbc.c
         src/cipher/algo/windows/win_zsm.c
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c

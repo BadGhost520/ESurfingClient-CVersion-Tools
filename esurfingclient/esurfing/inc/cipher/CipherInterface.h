@@ -30,54 +30,34 @@ typedef struct
     char* js;
 } ios_zsm_blob_t;
 
-extern cipher_interface_t* create_aes_cbc_android_old_cipher(
-    const uint8_t* key1,
-    const uint8_t* key2,
-    const uint8_t* iv);
-
-extern cipher_interface_t* create_aes_ecb_android_old_cipher(
+extern cipher_interface_t* create_desede_ecb_cipher(
     const uint8_t* key1,
     const uint8_t* key2);
 
-extern cipher_interface_t* create_desede_cbc_android_old_cipher(
-    const uint8_t* key1,
-    const uint8_t* key2,
-    const uint8_t* iv1,
-    const uint8_t* iv2);
-
-extern cipher_interface_t* create_desede_ecb_android_old_cipher(
-    const uint8_t* key1,
-    const uint8_t* key2);
-
-extern cipher_interface_t* create_zuc_android_old_cipher(
+extern cipher_interface_t* create_zuc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_sm4_cbc_android_old_cipher(
+extern cipher_interface_t* create_sm4_cbc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_sm4_ecb_android_old_cipher(
+extern cipher_interface_t* create_sm4_ecb_cipher(
     const uint8_t* key);
 
-extern cipher_interface_t* create_mod_xtea_android_old_cipher(
-    const uint32_t* key1,
-    const uint32_t* key2,
-    const uint32_t* key3);
-
-extern cipher_interface_t* create_mod_xtea_iv_android_old_cipher(
+extern cipher_interface_t* create_mod_xtea_iv_cipher(
     const uint32_t* key1,
     const uint32_t* key2,
     const uint32_t* key3,
     const uint32_t* iv);
 
-extern cipher_interface_t* create_ab6c8_linux_cipher(
+extern cipher_interface_t* create_mod_xtea_cbc_triple_cipher(
     const uint32_t* key0,
     const uint32_t* key1,
     const uint32_t* key2,
     const uint32_t* iv);
 
-extern cipher_interface_t* create_des_ecb_six_linux_cipher(
+extern cipher_interface_t* create_des_ecb_six_keys_cipher(
     const uint8_t* key0,
     const uint8_t* key1,
     const uint8_t* key2,
@@ -85,55 +65,59 @@ extern cipher_interface_t* create_des_ecb_six_linux_cipher(
     const uint8_t* key4,
     const uint8_t* key5);
 
-extern cipher_interface_t* create_desede_cbc_linux_cipher(
+extern cipher_interface_t* create_desede_cbc_cipher(
     const uint8_t* key1,
     const uint8_t* key2,
     const uint8_t* iv1,
     const uint8_t* iv2);
 
-extern cipher_interface_t* create_mod_xtea_linux_cipher(
+// swap_key_endian: key 字是否先做 32 位字节序转换 (Linux 为 true, 旧 Android 为 false)
+extern cipher_interface_t* create_mod_xtea_cipher(
     const uint32_t* key1,
     const uint32_t* key2,
-    const uint32_t* key3);
+    const uint32_t* key3,
+    bool swap_key_endian);
 
-extern cipher_interface_t* create_aes_cbc_linux_cipher(
+// 双层 AES-128-CBC, 两层共用同一个 IV; iv == NULL 时使用全 0 IV
+extern cipher_interface_t* create_aes_cbc_cipher(
+    const uint8_t* key1,
+    const uint8_t* key2,
+    const uint8_t* iv);
+
+extern cipher_interface_t* create_aes_ecb_cipher(
     const uint8_t* key1,
     const uint8_t* key2);
 
-extern cipher_interface_t* create_aes_ecb_linux_cipher(
-    const uint8_t* key1,
-    const uint8_t* key2);
-
-extern cipher_interface_t* create_snow3g_variant_android_cipher(
+extern cipher_interface_t* create_snow3g_variant_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_tea_triple_ecb_android_cipher(
+extern cipher_interface_t* create_tea_triple_ecb_cipher(
     const uint8_t* key);
 
-extern cipher_interface_t* create_tea_triple_cbc_android_cipher(
+extern cipher_interface_t* create_tea_triple_cbc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_sm4_variant_cbc_android_cipher(
+extern cipher_interface_t* create_sm4_variant_cbc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_sm4_variant_ecb_android_cipher(
+extern cipher_interface_t* create_sm4_variant_ecb_cipher(
     const uint8_t* key);
 
-extern cipher_interface_t* create_aes_double_cbc_android_cipher(
+extern cipher_interface_t* create_aes_double_cbc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_aes_double_ecb_android_cipher(
+extern cipher_interface_t* create_aes_double_ecb_cipher(
     const uint8_t* key);
 
-extern cipher_interface_t* create_desede_double_cbc_android_cipher(
+extern cipher_interface_t* create_desede_double_cbc_cipher(
     const uint8_t* key,
     const uint8_t* iv);
 
-extern cipher_interface_t* create_des_ecb_six_android_cipher(
+extern cipher_interface_t* create_des_ecb_six_cipher(
     const uint8_t* key);
 
 /**
@@ -168,10 +152,12 @@ bool init_ios_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_
  * @param key_len_out key 长度
  * @param iv_out iv 输出缓冲区
  * @param iv_len_out iv 长度 (0 表示没有 iv)
+ * @param type_out 可选, 写入 cdy 算法类型 (-1 表示未解析到)
  * @return 是否成功
  */
 bool get_ios_zsm_key_iv(const uint8_t* data, size_t length, char* algo_id_out,
-    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out);
+    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out,
+    int8_t* type_out);
 
 /**
  * @brief 从已解包的 iOS ZSM 数据设置加解密工厂
@@ -199,15 +185,24 @@ bool init_win_cipher_from_zsm(const uint8_t* data, size_t length, char* algo_id_
  * @param key_len_out key 长度
  * @param iv_out iv 输出缓冲区
  * @param iv_len_out iv 长度 (0 表示没有 iv)
+ * @param type_out 可选, 写入 cdy 算法类型
  * @return 是否成功
  */
 bool get_win_zsm_key_iv(const uint8_t* data, size_t length, char* algo_id_out,
-    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out);
+    uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out,
+    int8_t* type_out);
 
 /**
  * @brief 销毁加解密工厂
  */
 void destroy_cipher_factory();
+
+/**
+ * @brief 判断 Algo-ID 是否属于固定算法表
+ * @param algo_id 算法 ID
+ * @return 是否属于固定算法表
+ */
+bool is_fixed_cipher(const char* algo_id);
 
 /**
  * @brief 初始化加解密工厂

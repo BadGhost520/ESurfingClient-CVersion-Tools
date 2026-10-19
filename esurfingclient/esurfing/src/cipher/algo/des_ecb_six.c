@@ -218,7 +218,7 @@ static void des_ecb_six_destroy(cipher_interface_t* self)
     }
 }
 
-cipher_interface_t* create_des_ecb_six_android_cipher(const uint8_t* key)
+cipher_interface_t* create_des_ecb_six_cipher(const uint8_t* key)
 {
     if(!key) return NULL;
     cipher_interface_t* ci = s_calloc(1, sizeof(cipher_interface_t));
