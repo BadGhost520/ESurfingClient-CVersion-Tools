@@ -9,7 +9,7 @@
   - 不导出：只收集 Algo-ID，可以指定查找次数，也可以一直查找直到连续 1000 次没有新的 Algo-ID。
   - 导出：从 iOS/Windows 动态 ZSM 中解析 key/iv、平台和 `Type`（cdy），按 Algo-ID 去重后追加写入 txt 文件；一直查找不按次数停止，按 `Ctrl+C` 停止（达到预计算法个数时也会停）。
   - 固定算法没有可解析的 ZSM key/iv，导出时会跳过。
-- **算法代码**：算法实现已按算法名称统一放在 `esurfingclient/esurfing/src/cipher/algo/`，不再用 android/linux 命名，也不再保留 legacy 目录；能复用的旧实现已合并到主实现，独立旧算法也移到该目录。硬编码 Algo-ID 的 `strcmp` 分支统一放在 `CipherFactory.c`，key/iv 数据统一放在 `KeyData.c/.h`。
+- **算法代码**：算法实现已按算法名称统一放在 `esurfingclient/esurfing/src/cipher/algo/`，不再用 android/linux 命名，也不再保留 legacy 目录；能复用的旧实现已合并到主实现，独立旧算法也移到该目录。固定/动态分支统一在 `CipherFactory.c` 的单个 `create_cipher_factory()` 中，重复的 AES、SM4、XTEA 核心分别抽到 `aes_common.c`、`sm4_common.c`、`xtea_common.h`。key/iv 数据统一放在 `KeyData.c/.h`。
 
 每个硬编码 Algo-ID 在 `CipherFactory.c` 中都有一个 `strcmp` 分支，直接调用对应的共享算法实现；key/iv 从 `KeyData.c` 传入。当前包含 56 条从 `windows_key_iv.txt`、`ios_key_iv.txt`、`macos_key_iv.txt` 收集的记录，未命中的 ID 仍会回退到动态 ZSM 获取。
 

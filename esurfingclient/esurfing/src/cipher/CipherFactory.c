@@ -6,7 +6,7 @@
 
 static cipher_interface_t* s_cipher = NULL;
 
-static cipher_interface_t* create_fixed_cipher(const char* algo_id)
+static cipher_interface_t* create_cipher_factory(const char* algo_id, const bool include_dynamic)
 {
     if (algo_id == NULL) return NULL;
 
@@ -217,12 +217,7 @@ static cipher_interface_t* create_fixed_cipher(const char* algo_id)
         );
     }
 
-    return NULL;
-}
-
-static cipher_interface_t* create_dynamic_cipher(const char* algo_id)
-{
-    if (algo_id == NULL) return NULL;
+    if (!include_dynamic) return NULL;
 
     // Dynamic ZSM (Windows, cdy 6)
     if (strcmp(algo_id, "03F8A638-5C23-418B-972C-A2BA6927EF77") == 0)
@@ -657,20 +652,11 @@ static cipher_interface_t* create_dynamic_cipher(const char* algo_id)
     return NULL;
 }
 
-static cipher_interface_t* create_cipher_factory(const char* algo_id)
-{
-    cipher_interface_t* cipher = create_fixed_cipher(algo_id);
-    if (cipher != NULL) return cipher;
-    return create_dynamic_cipher(algo_id);
-}
-
 bool is_fixed_cipher(const char* algo_id)
 {
-    cipher_interface_t* cipher;
-
     if (algo_id == NULL) return false;
 
-    cipher = create_fixed_cipher(algo_id);
+    cipher_interface_t* cipher = create_cipher_factory(algo_id, false);
     if (cipher == NULL) return false;
 
     if (cipher->destroy != NULL) cipher->destroy(cipher);
@@ -693,12 +679,10 @@ void cipher_set_instance(cipher_interface_t* cipher)
 
 bool init_cipher(const char* algo_id)
 {
-    cipher_interface_t* cipher;
-
     if (algo_id == NULL) return false;
 
     destroy_cipher_factory();
-    cipher = create_cipher_factory(algo_id);
+    cipher_interface_t* cipher = create_cipher_factory(algo_id, true);
     if (cipher == NULL) return false;
 
     s_cipher = cipher;

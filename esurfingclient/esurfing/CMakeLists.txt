@@ -34,10 +34,12 @@ find_package(CURL REQUIRED)
 
 add_executable(ESurfingClient
         third_party/7z/LzmaDec.c
+        src/cipher/algo/aes_common.c
         src/cipher/algo/aes_double_cbc.c
         src/cipher/algo/aes_double_ecb.c
         src/cipher/algo/des_ecb_six.c
         src/cipher/algo/desede_double_cbc.c
+        src/cipher/algo/sm4_common.c
         src/cipher/algo/sm4_variant_cbc.c
         src/cipher/algo/sm4_variant_ecb.c
         src/cipher/algo/snow3g_variant.c

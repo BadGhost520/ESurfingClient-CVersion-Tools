@@ -3,9 +3,7 @@
 
 #include <string.h>
 #include <stdint.h>
-
-#define XTEA_NUM_ROUNDS 32
-#define XTEA_DELTA 0x9E3779B9u
+#include "xtea_common.h"
 
 typedef struct {
     uint32_t key1[4];
@@ -13,64 +11,6 @@ typedef struct {
     uint32_t key3[4];
     bool swap_key_endian;
 } mod_xtea_data_t;
-
-static uint32_t get_uint32_be(const uint8_t* data, const size_t offset)
-{
-    return (uint32_t)data[offset] << 24 | (uint32_t)data[offset + 1] << 16 |
-           (uint32_t)data[offset + 2] << 8 | (uint32_t)data[offset + 3];
-}
-static void set_uint32_be(uint8_t* data, const size_t offset, const uint32_t value)
-{
-    data[offset] = (uint8_t)(value >> 24 & 0xFF);
-    data[offset + 1] = (uint8_t)(value >> 16 & 0xFF);
-    data[offset + 2] = (uint8_t)(value >> 8 & 0xFF);
-    data[offset + 3] = (uint8_t)(value & 0xFF);
-}
-
-static uint32_t bswap32(const uint32_t x)
-{
-    return x >> 24 | (x >> 8 & 0x0000FF00u) | (x << 8 & 0x00FF0000u) | x << 24;
-}
-
-static void xtea_encrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key,
-    const bool swap_key_endian)
-{
-    uint32_t sum = 0;
-    const uint32_t ks[4] = {
-        swap_key_endian ? bswap32(key[0]) : key[0],
-        swap_key_endian ? bswap32(key[1]) : key[1],
-        swap_key_endian ? bswap32(key[2]) : key[2],
-        swap_key_endian ? bswap32(key[3]) : key[3]
-    };
-    for (int i = 0; i < XTEA_NUM_ROUNDS; ++i)
-    {
-        const uint32_t kB = ks[sum & 3u];
-        *v0 += (*v1 << 4 ^ *v1 >> 5) + (sum ^ *v1) + kB;
-        sum += XTEA_DELTA;
-        const uint32_t kA = ks[(sum >> 11) & 3u];
-        *v1 += (*v0 << 4 ^ *v0 >> 5) + (*v0 ^ sum) + kA;
-    }
-}
-
-static void xtea_decrypt_block(uint32_t* v0, uint32_t* v1, const uint32_t* key,
-    const bool swap_key_endian)
-{
-    uint32_t sum = XTEA_DELTA * XTEA_NUM_ROUNDS;
-    const uint32_t ks[4] = {
-        swap_key_endian ? bswap32(key[0]) : key[0],
-        swap_key_endian ? bswap32(key[1]) : key[1],
-        swap_key_endian ? bswap32(key[2]) : key[2],
-        swap_key_endian ? bswap32(key[3]) : key[3]
-    };
-    for (int i = 0; i < XTEA_NUM_ROUNDS; ++i)
-    {
-        const uint32_t kA = ks[sum >> 11 & 3u];
-        *v1 -= (*v0 << 4 ^ *v0 >> 5) + (*v0 ^ sum) + kA;
-        sum -= XTEA_DELTA;
-        const uint32_t kB = ks[sum & 3u];
-        *v0 -= (*v1 << 4 ^ *v1 >> 5) + (sum ^ *v1) + kB;
-    }
-}
 
 static char* mod_xtea_encrypt(cipher_interface_t* self, const char* text)
 {
@@ -86,13 +26,13 @@ static char* mod_xtea_encrypt(cipher_interface_t* self, const char* text)
     s_free(padded);
     for (size_t i = 0; i < padded_len; i += 8)
     {
-        uint32_t v0 = get_uint32_be(output, i);
-        uint32_t v1 = get_uint32_be(output, i + 4);
+        uint32_t v0 = xtea_get_be32(output, i);
+        uint32_t v1 = xtea_get_be32(output, i + 4);
         xtea_encrypt_block(&v0, &v1, data->key1, data->swap_key_endian);
         xtea_encrypt_block(&v0, &v1, data->key2, data->swap_key_endian);
         xtea_encrypt_block(&v0, &v1, data->key3, data->swap_key_endian);
-        set_uint32_be(output, i, v0);
-        set_uint32_be(output, i + 4, v1);
+        xtea_set_be32(output, i, v0);
+        xtea_set_be32(output, i + 4, v1);
     }
     char* hex = bytes_2_hex(output, padded_len);
     s_free(output);
@@ -112,13 +52,13 @@ static char* mod_xtea_decrypt(cipher_interface_t* self, const char* hex)
     s_free(bytes);
     for (size_t i = 0; i < bytes_len; i += 8)
     {
-        uint32_t v0 = get_uint32_be(output, i);
-        uint32_t v1 = get_uint32_be(output, i + 4);
+        uint32_t v0 = xtea_get_be32(output, i);
+        uint32_t v1 = xtea_get_be32(output, i + 4);
         xtea_decrypt_block(&v0, &v1, data->key3, data->swap_key_endian);
         xtea_decrypt_block(&v0, &v1, data->key2, data->swap_key_endian);
         xtea_decrypt_block(&v0, &v1, data->key1, data->swap_key_endian);
-        set_uint32_be(output, i, v0);
-        set_uint32_be(output, i + 4, v1);
+        xtea_set_be32(output, i, v0);
+        xtea_set_be32(output, i + 4, v1);
     }
     while (bytes_len > 0 && output[bytes_len - 1] == 0) bytes_len--;
     char* result = s_malloc(bytes_len + 1);
