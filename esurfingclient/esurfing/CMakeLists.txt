@@ -68,6 +68,7 @@ add_executable(ESurfingClient
         src/utils/Utils.c
         src/NetClient.c
         src/AlgoFinder.c
+        src/TicketCheck.c
         Main.c
 )
 

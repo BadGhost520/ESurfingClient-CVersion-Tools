@@ -14,7 +14,8 @@
 
 /**
  * 与抓包得到的 ticket 请求保持一致。
- * POST 内容固定为零 UUID, 下面的 CDC-Checksum 就是它的 MD5。
+ * 查找 Algo-ID 时 POST 38 字节说明串；Ticket 检查首次拉 ZSM 时用零 UUID
+ * (iOS/macOS 用空 body)，CDC-Checksum 对应为下面常量的 MD5。
  * 每次请求只把 Client-ID 换成新的随机 UUID, 服务端会据此返回不同的 Algo-ID。
  */
 #define ALGO_TICKET_URL "http://14.146.227.141:7001/ticket.cgi?wlanuserip=172.19.211.166&wlanacip=14.148.0.67&portal_node=http://125.88.59.131:10002"
@@ -33,6 +34,11 @@ _Static_assert(sizeof(ALGO_TICKET_BODY) - 1 == 38, "ticket body 长度必须是 
 #ifndef TICKET_BATCH_SIZE
 #define TICKET_BATCH_SIZE 24
 #endif
+
+const char* algo_ticket_url(void)
+{
+    return ALGO_TICKET_URL;
+}
 
 typedef enum
 {
@@ -187,6 +193,8 @@ typedef struct
 {
     char ua_header[ALGO_UA_LEN + 16];
     char client_id_header[64];
+    char client_id[37];
+    char checksum_header[64];
     const char* headers[10];
 } ticket_request_t;
 
@@ -213,7 +221,8 @@ static bool ticket_response_ok(const http_resp_t* resp)
     return true;
 }
 
-static bool prepare_ticket_batch(const char* ua, ticket_request_t* reqs, http_post_item_t* items, const size_t count)
+static bool prepare_ticket_batch(const char* ua, const char* body, const char* checksum,
+    ticket_request_t* reqs, http_post_item_t* items, const size_t count)
 {
     for (size_t i = 0; i < count; i++)
     {
@@ -221,10 +230,12 @@ static bool prepare_ticket_batch(const char* ua, ticket_request_t* reqs, http_po
 
         if (generate_uuid(client_id, sizeof(client_id)) == false) return false;
 
+        snprintf(reqs[i].client_id, sizeof(reqs[i].client_id), "%s", client_id);
         snprintf(reqs[i].ua_header, sizeof(reqs[i].ua_header), "User-Agent: %s", ua);
         snprintf(reqs[i].client_id_header, sizeof(reqs[i].client_id_header), "Client-ID: %s", client_id);
+        snprintf(reqs[i].checksum_header, sizeof(reqs[i].checksum_header), "CDC-Checksum: %s", checksum);
 
-        reqs[i].headers[0] = "CDC-Checksum: " ALGO_CHECKSUM;
+        reqs[i].headers[0] = reqs[i].checksum_header;
         reqs[i].headers[1] = "Content-Type: application/x-www-form-urlencoded";
         reqs[i].headers[2] = reqs[i].ua_header;
         reqs[i].headers[3] = "Accept: " ALGO_ACCEPT;
@@ -236,7 +247,7 @@ static bool prepare_ticket_batch(const char* ua, ticket_request_t* reqs, http_po
         reqs[i].headers[9] = NULL;
 
         items[i].headers = reqs[i].headers;
-        items[i].data = ALGO_TICKET_BODY;
+        items[i].data = body;
         memset(&items[i].resp, 0, sizeof(items[i].resp));
     }
     return true;
@@ -402,7 +413,7 @@ static void run_finder_with_ua(const char* ua)
         }
 
         if (batch_count == 0) break;
-        if (prepare_ticket_batch(ua, reqs, items, batch_count) == false) break;
+        if (prepare_ticket_batch(ua, ALGO_TICKET_BODY, ALGO_CHECKSUM, reqs, items, batch_count) == false) break;
 
         http_post_batch(ALGO_TICKET_URL, items, batch_count, TICKET_BATCH_SIZE);
 
@@ -517,7 +528,7 @@ bool algo_fetch_matching_zsm(const char* ua, const char* target_algo_id, const s
         }
 
         if (batch_count == 0) break;
-        if (prepare_ticket_batch(ua, reqs, items, batch_count) == false) break;
+        if (prepare_ticket_batch(ua, ALGO_TICKET_BODY, ALGO_CHECKSUM, reqs, items, batch_count) == false) break;
 
         http_post_batch(ALGO_TICKET_URL, items, batch_count, TICKET_BATCH_SIZE);
 
@@ -581,6 +592,67 @@ bool algo_fetch_matching_zsm(const char* ua, const char* target_algo_id, const s
     }
 
     return found;
+}
+
+bool algo_fetch_ticket_samples(const char* ua, const size_t count, ticket_sample_t* out, size_t* out_count)
+{
+    ticket_request_t* reqs;
+    http_post_item_t* items;
+    const char* body = ALGO_ZERO_ID;
+    const char* checksum = ALGO_CHECKSUM;
+    size_t got = 0;
+
+    if (ua == NULL || out == NULL || out_count == NULL || count == 0) return false;
+
+    *out_count = 0;
+    if (strstr(ua, "iOSdy") != NULL || strstr(ua, "macdy") != NULL)
+    {
+        body = "";
+        checksum = "d41d8cd98f00b204e9800998ecf8427e";
+    }
+
+    reqs = calloc(count, sizeof(*reqs));
+    items = calloc(count, sizeof(*items));
+    if (reqs == NULL || items == NULL)
+    {
+        free(reqs);
+        free(items);
+        return false;
+    }
+
+    if (prepare_ticket_batch(ua, body, checksum, reqs, items, count) == false)
+    {
+        free(reqs);
+        free(items);
+        return false;
+    }
+
+    http_post_batch(ALGO_TICKET_URL, items, count, TICKET_BATCH_SIZE);
+
+    for (size_t i = 0; i < count; i++)
+    {
+        if (items[i].resp.curl_code == CURLE_OK && items[i].resp.http_code == 200
+            && items[i].resp.body_data != NULL && items[i].resp.body_size > 0)
+        {
+            char id[ALGO_ID_LEN];
+            if (extract_algo_id(items[i].resp.body_data, items[i].resp.body_size, id, sizeof(id)))
+            {
+                snprintf(out[got].algo_id, sizeof(out[got].algo_id), "%s", id);
+                snprintf(out[got].client_id, sizeof(out[got].client_id), "%s", reqs[i].client_id);
+                out[got].body = items[i].resp.body_data;
+                out[got].body_size = items[i].resp.body_size;
+                items[i].resp.body_data = NULL;
+                items[i].resp.body_size = 0;
+                got++;
+            }
+        }
+        http_resp_free(&items[i].resp);
+    }
+
+    free(reqs);
+    free(items);
+    *out_count = got;
+    return got > 0;
 }
 
 #define KEY_IV_DEFAULT_FILE "key_iv.txt"
@@ -842,7 +914,7 @@ static void run_key_iv_with_ua(const char* ua)
         }
 
         if (batch_count == 0) break;
-        if (prepare_ticket_batch(ua, reqs, items, batch_count) == false) break;
+        if (prepare_ticket_batch(ua, ALGO_TICKET_BODY, ALGO_CHECKSUM, reqs, items, batch_count) == false) break;
 
         http_post_batch(ALGO_TICKET_URL, items, batch_count, TICKET_BATCH_SIZE);
 

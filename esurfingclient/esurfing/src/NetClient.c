@@ -1,5 +1,6 @@
 #include "NetClient.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,6 +37,51 @@ static void resp_set_error(http_resp_t* resp, const CURLcode code, const char* m
 {
     resp->curl_code = code;
     snprintf(resp->error, sizeof(resp->error), "%s", msg != NULL ? msg : curl_easy_strerror(code));
+}
+
+static bool header_name_is(const char* header, const char* name)
+{
+    while (*name != '\0')
+    {
+        if (tolower((unsigned char)*header) != tolower((unsigned char)*name)) return false;
+        header++;
+        name++;
+    }
+    return *header == ':';
+}
+
+static void header_copy_value(const char* header, const size_t name_len, char* out, const size_t out_len)
+{
+    const char* value = header + name_len + 1;
+    size_t value_len;
+
+    if (out == NULL || out_len == 0) return;
+    while (*value == ' ' || *value == '\t') value++;
+    value_len = strcspn(value, "\r\n");
+    while (value_len > 0 && (value[value_len - 1] == ' ' || value[value_len - 1] == '\t')) value_len--;
+    if (value_len >= out_len) value_len = out_len - 1;
+    memcpy(out, value, value_len);
+    out[value_len] = '\0';
+}
+
+static size_t header_cb(const void* contents, const size_t size, const size_t nmemb, void* userdata)
+{
+    const size_t real_size = size * nmemb;
+    const char* header = contents;
+    http_resp_t* resp = userdata;
+
+    if (resp != NULL && real_size > 2)
+    {
+        if (resp->error_code[0] == '\0' && header_name_is(header, "error-code"))
+        {
+            header_copy_value(header, strlen("error-code"), resp->error_code, sizeof(resp->error_code));
+        }
+        else if (resp->sub_error[0] == '\0' && header_name_is(header, "sub-error"))
+        {
+            header_copy_value(header, strlen("sub-error"), resp->sub_error, sizeof(resp->sub_error));
+        }
+    }
+    return real_size;
 }
 
 bool http_global_init()
@@ -98,6 +144,8 @@ static bool batch_start_slot(CURLM* multi, const char* url, http_batch_slot_t* s
     curl_easy_setopt(easy, CURLOPT_TIMEOUT, timeout);
     curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, item->resp.error);
+    curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, header_cb);
+    curl_easy_setopt(easy, CURLOPT_HEADERDATA, &item->resp);
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(easy, CURLOPT_WRITEDATA, &item->resp);
     curl_easy_setopt(easy, CURLOPT_PRIVATE, slot);
@@ -116,7 +164,8 @@ static bool batch_start_slot(CURLM* multi, const char* url, http_batch_slot_t* s
     return true;
 }
 
-void http_post_batch(const char* url, http_post_item_t* items, const size_t count, const size_t max_concurrent)
+void http_post_batch_timeout(const char* url, http_post_item_t* items, const size_t count,
+    const size_t max_concurrent, const long timeout)
 {
     http_batch_slot_t* slots;
     CURLM* multi;
@@ -157,7 +206,7 @@ void http_post_batch(const char* url, http_post_item_t* items, const size_t coun
     while (next < count && active < limit)
     {
         slots[next].item = &items[next];
-        if (batch_start_slot(multi, url, &slots[next], HTTP_BATCH_TIMEOUT)) active++;
+        if (batch_start_slot(multi, url, &slots[next], timeout)) active++;
         else
         {
             slots[next].done = true;
@@ -271,6 +320,11 @@ void http_post_batch(const char* url, http_post_item_t* items, const size_t coun
     free(slots);
 }
 
+void http_post_batch(const char* url, http_post_item_t* items, const size_t count, const size_t max_concurrent)
+{
+    http_post_batch_timeout(url, items, count, max_concurrent, HTTP_BATCH_TIMEOUT);
+}
+
 http_resp_t http_post(const char* url, const char* const* headers, const char* data)
 {
     http_post_item_t item;
@@ -280,6 +334,18 @@ http_resp_t http_post(const char* url, const char* const* headers, const char* d
     memset(&item.resp, 0, sizeof(item.resp));
 
     http_post_batch(url, &item, 1, 1);
+    return item.resp;
+}
+
+http_resp_t http_post_timeout(const char* url, const char* const* headers, const char* data, const long timeout)
+{
+    http_post_item_t item;
+
+    item.headers = headers;
+    item.data = data;
+    memset(&item.resp, 0, sizeof(item.resp));
+
+    http_post_batch_timeout(url, &item, 1, 1, timeout);
     return item.resp;
 }
 
@@ -293,4 +359,6 @@ void http_resp_free(http_resp_t* resp)
     resp->http_code = 0;
     resp->curl_code = CURLE_OK;
     resp->error[0] = '\0';
+    resp->error_code[0] = '\0';
+    resp->sub_error[0] = '\0';
 }

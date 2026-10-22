@@ -37,4 +37,29 @@ void algo_finder_run();
 bool algo_fetch_matching_zsm(const char* ua, const char* target_algo_id, size_t max_attempts,
     char** out_body, size_t* out_size);
 
+/** @brief 一次 ticket 采样结果 (body 由调用方 free) */
+typedef struct
+{
+    char algo_id[64];
+    char client_id[64];
+    char* body;
+    size_t body_size;
+} ticket_sample_t;
+
+/**
+ * @brief 并发请求一批 ticket, 返回 ZSM 样本
+ * @param ua 请求 UA
+ * @param count 本批请求数
+ * @param out 样本数组 (至少 count 项)
+ * @param out_count 实际成功样本数
+ * @return 是否至少得到一个样本
+ */
+bool algo_fetch_ticket_samples(const char* ua, size_t count, ticket_sample_t* out, size_t* out_count);
+
+/**
+ * @brief 获取默认 ticket URL
+ * @return ticket URL
+ */
+const char* algo_ticket_url(void);
+
 #endif // ESURFINGCLIENT_ALGOFINDER_H
