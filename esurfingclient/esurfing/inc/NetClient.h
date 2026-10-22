@@ -17,6 +17,14 @@ typedef struct
     char* body_data;
     /** @brief 响应体长度 */
     size_t body_size;
+    /** @brief 原始响应头 (包含状态行) */
+    char* header_data;
+    /** @brief 原始响应头长度 */
+    size_t header_size;
+    /** @brief curl 实际发出的请求头 */
+    char* request_header_data;
+    /** @brief 实际请求头长度 */
+    size_t request_header_size;
     /** @brief curl 错误信息 */
     char error[CURL_ERROR_SIZE];
     /** @brief 响应头 Error-Code */

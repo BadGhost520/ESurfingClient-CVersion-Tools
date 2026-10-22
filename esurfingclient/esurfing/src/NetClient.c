@@ -70,6 +70,17 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
     const char* header = contents;
     http_resp_t* resp = userdata;
 
+    if (resp != NULL && real_size > 0)
+    {
+        char* ptr = realloc(resp->header_data, resp->header_size + real_size + 1);
+        if (ptr == NULL) return 0;
+
+        resp->header_data = ptr;
+        memcpy(resp->header_data + resp->header_size, contents, real_size);
+        resp->header_size += real_size;
+        resp->header_data[resp->header_size] = '\0';
+    }
+
     if (resp != NULL && real_size > 2)
     {
         if (resp->error_code[0] == '\0' && header_name_is(header, "error-code"))
@@ -82,6 +93,26 @@ static size_t header_cb(const void* contents, const size_t size, const size_t nm
         }
     }
     return real_size;
+}
+
+static int debug_cb(CURL* handle, const curl_infotype type, char* data, const size_t size, void* userdata)
+{
+    http_resp_t* resp = userdata;
+
+    (void)handle;
+    if (resp == NULL || data == NULL || size == 0) return 0;
+
+    if (type == CURLINFO_HEADER_OUT)
+    {
+        char* ptr = realloc(resp->request_header_data, resp->request_header_size + size + 1);
+        if (ptr == NULL) return 0;
+
+        resp->request_header_data = ptr;
+        memcpy(resp->request_header_data + resp->request_header_size, data, size);
+        resp->request_header_size += size;
+        resp->request_header_data[resp->request_header_size] = '\0';
+    }
+    return 0;
 }
 
 bool http_global_init()
@@ -144,6 +175,9 @@ static bool batch_start_slot(CURLM* multi, const char* url, http_batch_slot_t* s
     curl_easy_setopt(easy, CURLOPT_TIMEOUT, timeout);
     curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
     curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, item->resp.error);
+    curl_easy_setopt(easy, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(easy, CURLOPT_DEBUGFUNCTION, debug_cb);
+    curl_easy_setopt(easy, CURLOPT_DEBUGDATA, &item->resp);
     curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, header_cb);
     curl_easy_setopt(easy, CURLOPT_HEADERDATA, &item->resp);
     curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, write_cb);
@@ -356,6 +390,12 @@ void http_resp_free(http_resp_t* resp)
     free(resp->body_data);
     resp->body_data = NULL;
     resp->body_size = 0;
+    free(resp->header_data);
+    resp->header_data = NULL;
+    resp->header_size = 0;
+    free(resp->request_header_data);
+    resp->request_header_data = NULL;
+    resp->request_header_size = 0;
     resp->http_code = 0;
     resp->curl_code = CURLE_OK;
     resp->error[0] = '\0';

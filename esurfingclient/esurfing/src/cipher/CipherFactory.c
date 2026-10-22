@@ -649,6 +649,392 @@ static cipher_interface_t* create_cipher_factory(const char* algo_id, const bool
         );
     }
 
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "A7984530-FDA0-455C-ACAC-19854FB7A659") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_A7984530_FDA0_455C_ACAC_19854FB7A659,
+            iv_A7984530_FDA0_455C_ACAC_19854FB7A659
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "6C5CF775-8F43-4CAA-856E-2845431B4CC0") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_6C5CF775_8F43_4CAA_856E_2845431B4CC0,
+            iv_6C5CF775_8F43_4CAA_856E_2845431B4CC0
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "58FD3FCA-C8BC-4547-9DA5-6FAEE884F26E") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_58FD3FCA_C8BC_4547_9DA5_6FAEE884F26E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "4FE47EF4-1BDC-43DE-AF53-4D6C30DA9ACD") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_4FE47EF4_1BDC_43DE_AF53_4D6C30DA9ACD,
+            iv_4FE47EF4_1BDC_43DE_AF53_4D6C30DA9ACD
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "F3557D5A-9F79-4A63-A152-4A939FCC96F9") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_F3557D5A_9F79_4A63_A152_4A939FCC96F9,
+            iv_F3557D5A_9F79_4A63_A152_4A939FCC96F9
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "2E86DCEE-4E28-4AC2-A3FB-19F68115141E") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_2E86DCEE_4E28_4AC2_A3FB_19F68115141E,
+            iv_2E86DCEE_4E28_4AC2_A3FB_19F68115141E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "CA9A519E-AD98-401B-8111-83EFC3C76F7C") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_CA9A519E_AD98_401B_8111_83EFC3C76F7C,
+            iv_CA9A519E_AD98_401B_8111_83EFC3C76F7C
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "EA85A478-CDD9-483C-98C4-4CEE1347C9B9") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_EA85A478_CDD9_483C_98C4_4CEE1347C9B9,
+            iv_EA85A478_CDD9_483C_98C4_4CEE1347C9B9
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "76C9B8BC-FCAA-445A-93CC-D22B9413159D") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_76C9B8BC_FCAA_445A_93CC_D22B9413159D
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "51A47203-4DCB-4A5A-9838-C452FD2774DC") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_51A47203_4DCB_4A5A_9838_C452FD2774DC,
+            iv_51A47203_4DCB_4A5A_9838_C452FD2774DC
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "DF92372F-EF9B-44FC-ABB4-EC5625DE60B6") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_DF92372F_EF9B_44FC_ABB4_EC5625DE60B6
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "6DF91D90-3324-4064-BBA8-EFF3820BDF1E") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_6DF91D90_3324_4064_BBA8_EFF3820BDF1E,
+            iv_6DF91D90_3324_4064_BBA8_EFF3820BDF1E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "014AC5DB-0B7C-4F05-B21E-55C2535B3A01") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_014AC5DB_0B7C_4F05_B21E_55C2535B3A01,
+            iv_014AC5DB_0B7C_4F05_B21E_55C2535B3A01
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "6B4D085A-17D5-4404-94BE-FD5FED11007F") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_6B4D085A_17D5_4404_94BE_FD5FED11007F,
+            iv_6B4D085A_17D5_4404_94BE_FD5FED11007F
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "7A16C88E-1E0C-4C4E-8702-E76D7C743C01") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_7A16C88E_1E0C_4C4E_8702_E76D7C743C01,
+            iv_7A16C88E_1E0C_4C4E_8702_E76D7C743C01
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "DA2B057E-5D9E-48BC-B2BC-EA43D8D2A65E") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_DA2B057E_5D9E_48BC_B2BC_EA43D8D2A65E,
+            iv_DA2B057E_5D9E_48BC_B2BC_EA43D8D2A65E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "A7BBDBD5-DB4C-46A8-91E8-E4C8003C8CDD") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_A7BBDBD5_DB4C_46A8_91E8_E4C8003C8CDD
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "F0DA8287-3EF6-4C7C-BD59-B9542BC16898") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_F0DA8287_3EF6_4C7C_BD59_B9542BC16898,
+            iv_F0DA8287_3EF6_4C7C_BD59_B9542BC16898
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "DF011932-AFC2-447D-948D-A21EFA7411B8") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_DF011932_AFC2_447D_948D_A21EFA7411B8,
+            iv_DF011932_AFC2_447D_948D_A21EFA7411B8
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "BE5EC2E8-248A-4868-9A34-B53BE5FDB887") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_BE5EC2E8_248A_4868_9A34_B53BE5FDB887,
+            iv_BE5EC2E8_248A_4868_9A34_B53BE5FDB887
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "7F224CA8-0DF5-47C6-9195-2D335E31D882") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_7F224CA8_0DF5_47C6_9195_2D335E31D882
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "FE8F87FC-726F-4303-B15D-88A9F5B63174") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_FE8F87FC_726F_4303_B15D_88A9F5B63174,
+            iv_FE8F87FC_726F_4303_B15D_88A9F5B63174
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "F1D8F312-EADC-4803-9B47-9C7684B2156F") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_F1D8F312_EADC_4803_9B47_9C7684B2156F,
+            iv_F1D8F312_EADC_4803_9B47_9C7684B2156F
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "E51E14F1-BCB1-45F4-8FF6-3992CA3FCD05") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_E51E14F1_BCB1_45F4_8FF6_3992CA3FCD05,
+            iv_E51E14F1_BCB1_45F4_8FF6_3992CA3FCD05
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "FF5F345F-B580-43DF-9ED3-D92FAE586133") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_FF5F345F_B580_43DF_9ED3_D92FAE586133,
+            iv_FF5F345F_B580_43DF_9ED3_D92FAE586133
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "AA4D098D-336C-4523-AD31-C99D3F1514CA") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_AA4D098D_336C_4523_AD31_C99D3F1514CA
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "0A4E0BB5-A13D-4FB1-A5C5-D78F1D92CE64") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_0A4E0BB5_A13D_4FB1_A5C5_D78F1D92CE64
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "D245DD7B-900F-456C-9ED5-8C094E8E240C") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_D245DD7B_900F_456C_9ED5_8C094E8E240C,
+            iv_D245DD7B_900F_456C_9ED5_8C094E8E240C
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "14D50A01-FB30-4ED0-B287-96286E3091C1") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_14D50A01_FB30_4ED0_B287_96286E3091C1,
+            iv_14D50A01_FB30_4ED0_B287_96286E3091C1
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "A1DFF4B8-770B-4EB3-9F79-719F2196E315") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_A1DFF4B8_770B_4EB3_9F79_719F2196E315
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "FF25BFEC-B03C-4EF0-8487-71D41E04FF65") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_FF25BFEC_B03C_4EF0_8487_71D41E04FF65,
+            iv_FF25BFEC_B03C_4EF0_8487_71D41E04FF65
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "C12422B4-A6B9-4977-952B-D6627D482627") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_C12422B4_A6B9_4977_952B_D6627D482627,
+            iv_C12422B4_A6B9_4977_952B_D6627D482627
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "5D79B368-0B90-4194-8437-AB0571DF0BD5") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_5D79B368_0B90_4194_8437_AB0571DF0BD5,
+            iv_5D79B368_0B90_4194_8437_AB0571DF0BD5
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "EC4D2CF4-EC20-4DCA-B35D-097F9C2370FC") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_EC4D2CF4_EC20_4DCA_B35D_097F9C2370FC,
+            iv_EC4D2CF4_EC20_4DCA_B35D_097F9C2370FC
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "23CBE797-3BC2-4FCF-A589-23C3D31BCED7") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_23CBE797_3BC2_4FCF_A589_23C3D31BCED7,
+            iv_23CBE797_3BC2_4FCF_A589_23C3D31BCED7
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "4C0EAF45-8E70-45C2-BD82-52C834005758") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_4C0EAF45_8E70_45C2_BD82_52C834005758
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "3FBF4B5E-972D-43EF-A454-46E6BE15B329") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_3FBF4B5E_972D_43EF_A454_46E6BE15B329,
+            iv_3FBF4B5E_972D_43EF_A454_46E6BE15B329
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "52116A19-3222-40F0-A117-DC377BED0D3E") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_52116A19_3222_40F0_A117_DC377BED0D3E,
+            iv_52116A19_3222_40F0_A117_DC377BED0D3E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "F9A253A7-4D9E-4ED3-BA0F-118E56D34267") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_F9A253A7_4D9E_4ED3_BA0F_118E56D34267,
+            iv_F9A253A7_4D9E_4ED3_BA0F_118E56D34267
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "10FD0A56-0044-45F0-A342-7CE242B1A427") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_10FD0A56_0044_45F0_A342_7CE242B1A427
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 6)
+    if (strcmp(algo_id, "023BD049-E130-4FBF-AB73-800FA2E38948") == 0)
+    {
+        return create_tea_triple_cbc_cipher(
+            key_023BD049_E130_4FBF_AB73_800FA2E38948,
+            iv_023BD049_E130_4FBF_AB73_800FA2E38948
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "DF4FF2CD-3387-4377-9A91-E90E05081073") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_DF4FF2CD_3387_4377_9A91_E90E05081073
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "C8E20AA2-0254-4C36-ACF1-EF4779934D08") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_C8E20AA2_0254_4C36_ACF1_EF4779934D08,
+            iv_C8E20AA2_0254_4C36_ACF1_EF4779934D08
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "14F3C2A4-19E9-4C4D-A5C1-E5A316C884F0") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_14F3C2A4_19E9_4C4D_A5C1_E5A316C884F0,
+            iv_14F3C2A4_19E9_4C4D_A5C1_E5A316C884F0
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "8F950701-C9FC-45A5-9780-7305FE025D4E") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_8F950701_C9FC_45A5_9780_7305FE025D4E
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "04DB9EC7-155A-4482-B6A4-1F37A3B905A4") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_04DB9EC7_155A_4482_B6A4_1F37A3B905A4,
+            iv_04DB9EC7_155A_4482_B6A4_1F37A3B905A4
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "32C8C121-2467-42C4-A09D-1B0BA754D18F") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_32C8C121_2467_42C4_A09D_1B0BA754D18F
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "262A30B9-FE27-4206-B57A-3CB44E2A1138") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_262A30B9_FE27_4206_B57A_3CB44E2A1138
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 5)
+    if (strcmp(algo_id, "6BB82AD9-D331-4BE8-BC52-C1F56E351C1C") == 0)
+    {
+        return create_tea_triple_ecb_cipher(
+            key_6BB82AD9_D331_4BE8_BC52_C1F56E351C1C
+        );
+    }
+    // Dynamic ZSM (Windows, cdy 2)
+    if (strcmp(algo_id, "0E045477-EF58-46D8-BEE5-8D9D577C91F3") == 0)
+    {
+        return create_aes_double_cbc_cipher(
+            key_0E045477_EF58_46D8_BEE5_8D9D577C91F3,
+            iv_0E045477_EF58_46D8_BEE5_8D9D577C91F3
+        );
+    }
+
     return NULL;
 }
 

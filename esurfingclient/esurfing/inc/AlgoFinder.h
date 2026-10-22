@@ -4,11 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/** @brief 连续多少次没有新 Algo-ID 时停止 */
-#ifndef ALGO_FIND_NO_NEW_LIMIT
-#define ALGO_FIND_NO_NEW_LIMIT 1000
-#endif
-
 /** @brief UA 缓冲区长度 */
 #define ALGO_UA_LEN 128
 
@@ -56,10 +51,23 @@ typedef struct
  */
 bool algo_fetch_ticket_samples(const char* ua, size_t count, ticket_sample_t* out, size_t* out_count);
 
+/** 从指定服务器 URL 获取 ZSM 样本 */
+bool algo_fetch_ticket_samples_from(const char* ua, const char* url, size_t count,
+    ticket_sample_t* out, size_t* out_count);
+
 /**
  * @brief 获取默认 ticket URL
  * @return ticket URL
  */
 const char* algo_ticket_url(void);
+
+/** 第二认证服务器 URL（121.8.177.212） */
+const char* algo_ticket_url_alt(void);
+
+/** 认证服务器显示名，index=0/1 */
+const char* algo_server_name(size_t index);
+
+/** 认证服务器 URL，index=0/1，越界返回 NULL */
+const char* algo_server_url(size_t index);
 
 #endif // ESURFINGCLIENT_ALGOFINDER_H

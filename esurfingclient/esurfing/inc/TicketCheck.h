@@ -6,4 +6,9 @@
  */
 void ticket_check_run(void);
 
+/**
+ * @brief 指定稳定 Algo-ID 获取 Ticket（只接受服务端下发的同 ID ZSM）
+ */
+void ticket_direct_run(void);
+
 #endif // ESURFINGCLIENT_TICKETCHECK_H

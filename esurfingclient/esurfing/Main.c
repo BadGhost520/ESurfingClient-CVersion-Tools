@@ -22,6 +22,7 @@ static void print_menu()
     printf("  1. 加解密文本\n");
     printf("  2. 查找 Algo-ID / 导出 Key/IV\n");
     printf("  3. 检查 Ticket 可用性\n");
+    printf("  4. 指定 Algo-ID 直接获取 Ticket\n");
     printf("  0. 退出\n");
     printf("请输入选项: ");
 }
@@ -271,6 +272,10 @@ int main()
         else if (strcmp(choice, "3") == 0)
         {
             ticket_check_run();
+        }
+        else if (strcmp(choice, "4") == 0)
+        {
+            ticket_direct_run();
         }
         else if (strcmp(choice, "0") == 0)
         {
