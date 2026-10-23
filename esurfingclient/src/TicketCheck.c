@@ -222,12 +222,18 @@ static const char* const IOS_IDS[] = {
     "2E75BFA5-76C5-4691-BBF5-A49C94908464",
     "4D10D93E-5A68-46D4-83EA-49E7C4933C91",
     "E2F8C4B2-2742-4690-9BD5-BBAB926FB9E8",
+    "928CE71E-6D12-4887-ABB8-500CDD18FBF2",
+    "674E4CDD-5556-441B-AAAD-A69FB14F49BC",
+    "89E57D42-9B77-4CBB-B08A-D9CD602E4A67",
 };
 
 static const char* const MACOS_IDS[] = {
     "634D7C6F-581F-47CC-959C-D9265EDAB9B4",
     "7781847B-446E-4CF7-A418-79989EFA1B00",
     "E366503B-B6E5-40A5-BCE1-39001D18D90E",
+    "E7BE4937-4069-4096-9437-B2B9C1AE9021",
+    "064C7B38-20B9-4CE4-9760-66822A3BF0E7",
+    "AED79B90-C27B-4D4F-8E53-C522FA955CFE",
 };
 
 static const char* const ANDROID_OLD_IDS[] = {
@@ -252,6 +258,15 @@ static const char* const ANDROID_NEW_IDS[] = {
     "9ABF4D29-34DB-4CE9-BB8C-7E371D637758",
     "AD8BB5B0-0E72-4198-A362-96D52C1B7ED1",
     "35101415-A20F-4DFE-B00B-0B4F3B2F8C66",
+    "D522E657-2CC3-46BE-BBE9-9CF1DF896C41",
+    "3084D519-54D7-4434-9564-26A8615BCEF2",
+    "3D74E736-AB35-47CD-B934-77EBEF2B42D3",
+    "64BD1BB8-49F4-448F-9D63-C4E96FC068CC",
+    "252F0396-5254-4A42-9390-FA2EF1EB8D6E",
+    "73B3F4AE-643F-471F-B08C-A5893D7B3601",
+    "7E6A7DE0-4C56-47E6-A25A-1B4DCD33B950",
+    "5038A11D-75EA-4F75-AF8D-2DAD8E0E6A19",
+    "406BD7C5-C48A-4F48-B072-82D5948B537B",
 };
 
 static const char* const LINUX_IDS[] = {
@@ -261,6 +276,55 @@ static const char* const LINUX_IDS[] = {
     "60639D8B-272E-4A4D-976E-AA270987A169",
     "AB6C8EBE-B8F8-4C08-8222-69A3B5E86A91",
     "B306E770-B7D5-49F2-A574-BCE2C5C650ED",
+};
+
+/* 按服务器拆分: server0 = 14.146.227.141, server1 = 121.8.177.212 */
+static const char* const ANDROID_NEW_SERVER0_IDS[] = {
+    "07E824B2-9E5C-4D1B-BBB0-5E07C251E4AA",
+    "319FC5AB-EC0E-46B9-A252-2285F9DAE813",
+    "D6544CFE-F2DE-459B-9B77-0F2B367EF169",
+    "D755A536-B551-468C-BD87-322182B223D4",
+    "BB2EA626-590B-4C42-82BE-E052FCBBB88E",
+    "DEABB8C8-A2BC-48CA-8ED0-8CDF1BD62F61",
+    "9ABF4D29-34DB-4CE9-BB8C-7E371D637758",
+    "AD8BB5B0-0E72-4198-A362-96D52C1B7ED1",
+    "35101415-A20F-4DFE-B00B-0B4F3B2F8C66",
+};
+
+static const char* const ANDROID_NEW_SERVER1_IDS[] = {
+    "D522E657-2CC3-46BE-BBE9-9CF1DF896C41",
+    "3084D519-54D7-4434-9564-26A8615BCEF2",
+    "3D74E736-AB35-47CD-B934-77EBEF2B42D3",
+    "64BD1BB8-49F4-448F-9D63-C4E96FC068CC",
+    "252F0396-5254-4A42-9390-FA2EF1EB8D6E",
+    "73B3F4AE-643F-471F-B08C-A5893D7B3601",
+    "7E6A7DE0-4C56-47E6-A25A-1B4DCD33B950",
+    "5038A11D-75EA-4F75-AF8D-2DAD8E0E6A19",
+    "406BD7C5-C48A-4F48-B072-82D5948B537B",
+};
+
+static const char* const IOS_SERVER0_IDS[] = {
+    "2E75BFA5-76C5-4691-BBF5-A49C94908464",
+    "4D10D93E-5A68-46D4-83EA-49E7C4933C91",
+    "E2F8C4B2-2742-4690-9BD5-BBAB926FB9E8",
+};
+
+static const char* const IOS_SERVER1_IDS[] = {
+    "928CE71E-6D12-4887-ABB8-500CDD18FBF2",
+    "674E4CDD-5556-441B-AAAD-A69FB14F49BC",
+    "89E57D42-9B77-4CBB-B08A-D9CD602E4A67",
+};
+
+static const char* const MACOS_SERVER0_IDS[] = {
+    "634D7C6F-581F-47CC-959C-D9265EDAB9B4",
+    "7781847B-446E-4CF7-A418-79989EFA1B00",
+    "E366503B-B6E5-40A5-BCE1-39001D18D90E",
+};
+
+static const char* const MACOS_SERVER1_IDS[] = {
+    "E7BE4937-4069-4096-9437-B2B9C1AE9021",
+    "064C7B38-20B9-4CE4-9760-66822A3BF0E7",
+    "AED79B90-C27B-4D4F-8E53-C522FA955CFE",
 };
 
 typedef struct
@@ -838,7 +902,7 @@ static bool init_dynamic_cipher_for_ua(const char* ua, const char* zsm, const si
 static bool check_one_id(const char* ua, const char* url, const char* algo_id,
     const char* client_id, const char* zsm, const size_t zsm_len, cipher_mode_t cipher_mode,
     const int update_retry, char* reason, const size_t reason_len, ticket_raw_response_t* raw,
-    char** out_ticket)
+    char** out_ticket, cipher_interface_t* custom_cipher)
 {
     char host_name[64];
     char ostag[64];
@@ -874,7 +938,12 @@ static bool check_one_id(const char* ua, const char* url, const char* algo_id,
         return false;
     }
 
-    if (cipher_mode == CIPHER_MODE_HARDCODED)
+    if (custom_cipher != NULL)
+    {
+        cipher_set_instance(custom_cipher);
+        inited = true;
+    }
+    else if (cipher_mode == CIPHER_MODE_HARDCODED)
     {
         inited = init_cipher(algo_id);
     }
@@ -1020,6 +1089,13 @@ static bool check_one_id(const char* ua, const char* url, const char* algo_id,
     if (strcmp(resp.error_code, "200") == 0
         && response_is_zsm(resp.body_data, resp.body_size))
     {
+        if (custom_cipher != NULL)
+        {
+            snprintf(reason, reason_len, "服务端返回 ZSM, 当前算法不匹配");
+            http_resp_free(&resp);
+            goto cleanup;
+        }
+
         char new_algo[ALGO_ID_LEN] = "";
         char* new_zsm;
         const size_t new_size = resp.body_size;
@@ -1057,7 +1133,7 @@ static bool check_one_id(const char* ua, const char* url, const char* algo_id,
         {
             const bool updated = check_one_id(ua, url, new_algo, client_id, new_zsm,
                 new_size, CIPHER_MODE_DYNAMIC, update_retry + 1,
-                reason, reason_len, raw, out_ticket);
+                reason, reason_len, raw, out_ticket, NULL);
             free(new_zsm);
             return updated;
         }
@@ -1228,7 +1304,7 @@ static void ticket_dynamic_run(const char* ua, const char* url, const ticket_gro
 
             const bool ok = check_one_id(ua, url, batch[i].algo_id, batch[i].client_id,
                 batch[i].body, batch[i].body_size, CIPHER_MODE_DYNAMIC, 0,
-                reason, sizeof(reason), &raw, NULL);
+                reason, sizeof(reason), &raw, NULL, NULL);
             ticket_raw_free(&raw);
             free(batch[i].body);
 
@@ -1278,6 +1354,47 @@ static int find_id_in_list(const char* const* ids, const size_t count, const cha
     return -1;
 }
 
+/**
+ * @brief 取指定服务器的 Algo-ID 列表
+ *
+ * 同一个平台在两台服务器上的 Algo-ID 是独立集合，不能合并轮询。
+ */
+static void ticket_server_ids(const ticket_group_t* group, const size_t server,
+    const char* const** ids, size_t* count)
+{
+    *ids = group->ids;
+    *count = group->count;
+
+    if (group == &s_groups[0])
+    {
+        *ids = server == 0 ? WINDOWS_SERVER0_IDS : WINDOWS_SERVER1_IDS;
+        *count = server == 0
+            ? sizeof(WINDOWS_SERVER0_IDS) / sizeof(WINDOWS_SERVER0_IDS[0])
+            : sizeof(WINDOWS_SERVER1_IDS) / sizeof(WINDOWS_SERVER1_IDS[0]);
+    }
+    else if (group == &s_groups[1])
+    {
+        *ids = server == 0 ? IOS_SERVER0_IDS : IOS_SERVER1_IDS;
+        *count = server == 0
+            ? sizeof(IOS_SERVER0_IDS) / sizeof(IOS_SERVER0_IDS[0])
+            : sizeof(IOS_SERVER1_IDS) / sizeof(IOS_SERVER1_IDS[0]);
+    }
+    else if (group == &s_groups[2])
+    {
+        *ids = server == 0 ? MACOS_SERVER0_IDS : MACOS_SERVER1_IDS;
+        *count = server == 0
+            ? sizeof(MACOS_SERVER0_IDS) / sizeof(MACOS_SERVER0_IDS[0])
+            : sizeof(MACOS_SERVER1_IDS) / sizeof(MACOS_SERVER1_IDS[0]);
+    }
+    else if (group == &s_groups[4])
+    {
+        *ids = server == 0 ? ANDROID_NEW_SERVER0_IDS : ANDROID_NEW_SERVER1_IDS;
+        *count = server == 0
+            ? sizeof(ANDROID_NEW_SERVER0_IDS) / sizeof(ANDROID_NEW_SERVER0_IDS[0])
+            : sizeof(ANDROID_NEW_SERVER1_IDS) / sizeof(ANDROID_NEW_SERVER1_IDS[0]);
+    }
+}
+
 static bool prompt_server_choice(const bool windows, size_t* chosen)
 {
     char input[16];
@@ -1318,7 +1435,7 @@ static bool hardcoded_check(const char* ua, const char* url, const char* id,
 {
     ticket_raw_response_t raw = {0};
     const bool ok = check_one_id(ua, url, id, client_id, NULL, 0, CIPHER_MODE_HARDCODED, 0,
-        reason, reason_len, &raw, ticket);
+        reason, reason_len, &raw, ticket, NULL);
     ticket_raw_free(&raw);
     return ok;
 }
@@ -1326,7 +1443,6 @@ static bool hardcoded_check(const char* ua, const char* url, const char* id,
 static void ticket_check_hardcoded_server(const char* ua, const ticket_group_t* group,
     const size_t chosen_server)
 {
-    const bool windows = group == &s_groups[0];
     const char* const* ids = group->ids;
     size_t count = group->count;
     const char* primary_url = algo_server_url(chosen_server);
@@ -1335,13 +1451,7 @@ static void ticket_check_hardcoded_server(const char* ua, const ticket_group_t* 
     char path[128];
     void (*old_sigint)(int) = NULL;
 
-    if (windows)
-    {
-        ids = chosen_server == 0 ? WINDOWS_SERVER0_IDS : WINDOWS_SERVER1_IDS;
-        count = chosen_server == 0
-            ? sizeof(WINDOWS_SERVER0_IDS) / sizeof(WINDOWS_SERVER0_IDS[0])
-            : sizeof(WINDOWS_SERVER1_IDS) / sizeof(WINDOWS_SERVER1_IDS[0]);
-    }
+    ticket_server_ids(group, chosen_server, &ids, &count);
 
     results = calloc(count, sizeof(*results));
     if (results == NULL || primary_url == NULL)
@@ -1503,10 +1613,229 @@ static bool ticket_direct_one(const char* ua, const char* url, const char* clien
     ticket_raw_response_t local_raw = {0};
     ticket_raw_response_t* raw = out_raw != NULL ? out_raw : &local_raw;
     const bool ok = check_one_id(ua, url, algo_id, client_id, NULL, 0, CIPHER_MODE_HARDCODED, 0,
-        reason, reason_len, raw, out_ticket);
+        reason, reason_len, raw, out_ticket, NULL);
 
     if (out_raw == NULL) ticket_raw_free(&local_raw);
     return ok;
+}
+
+static bool ticket_read_whole_file(const char* path, char** out, size_t* out_len)
+{
+    FILE* fp;
+    long size;
+    char* data;
+
+    if (path == NULL || out == NULL || out_len == NULL) return false;
+    *out = NULL;
+    *out_len = 0;
+
+    fp = fopen(path, "rb");
+    if (fp == NULL) return false;
+    if (fseek(fp, 0, SEEK_END) != 0) { fclose(fp); return false; }
+    size = ftell(fp);
+    if (size <= 0) { fclose(fp); return false; }
+    if (fseek(fp, 0, SEEK_SET) != 0) { fclose(fp); return false; }
+
+    data = malloc((size_t)size);
+    if (data == NULL) { fclose(fp); return false; }
+    if (fread(data, 1, (size_t)size, fp) != (size_t)size)
+    {
+        free(data);
+        fclose(fp);
+        return false;
+    }
+    fclose(fp);
+    *out = data;
+    *out_len = (size_t)size;
+    return true;
+}
+
+static size_t ticket_prompt_attempts(void)
+{
+    char line[32];
+
+    for (;;)
+    {
+        printf("最多查找 ZSM 次数 (直接回车默认 1000, 输入 0 一直查找, Ctrl+C 停止): ");
+        if (read_line(line, sizeof(line)) == false) return 0;
+        trim_str(line);
+        if (line[0] == '\0') return 1000;
+
+        char* end = NULL;
+        const unsigned long value = strtoul(line, &end, 10);
+        if (end != line && *end == '\0') return (size_t)value;
+        printf("输入无效\n");
+    }
+}
+
+/*
+ * 功能 5：
+ * 固定一个 Algo-ID 和它对应的 key/iv，依次用 CipherFactory 里已有的
+ * 算法实现去换 ticket。哪个算法能换到 ticket，就说明它是正确类型。
+ *
+ * 不依赖 Algo-ID 判断算法类型；Algo-ID 只用于请求头和 ZSM 匹配。
+ */
+void ticket_algo_poll_run(void)
+{
+    char ua[ALGO_UA_LEN];
+    char algo_id[ALGO_ID_LEN];
+    char input[260];
+    char client_id[37];
+    char reason[192] = "";
+    char* zsm = NULL;
+    size_t zsm_len = 0;
+    uint8_t key[ELF_SO_KEY_MAX];
+    uint8_t iv[ELF_SO_IV_MAX];
+    size_t key_len = 0;
+    size_t iv_len = 0;
+    elf_algo_type_t detected = ELF_ALGO_UNKNOWN;
+    elf_algo_type_t order[ELF_ALGO_COUNT];
+    size_t order_count = 0;
+    size_t success_count = 0;
+    const char* url;
+
+    if (algo_prompt_ua(ua, sizeof(ua)) == false) return;
+    if (strstr(ua, "android") == NULL && strstr(ua, "Linux") == NULL)
+    {
+        printf("功能 5 当前只支持 Android/Linux 动态模块\n");
+        return;
+    }
+
+    printf("\n请输入 Algo-ID: ");
+    if (read_line(input, sizeof(input)) == false) return;
+    trim_str(input);
+    if (strlen(input) != 36)
+    {
+        printf("Algo-ID 长度必须是 36\n");
+        return;
+    }
+    snprintf(algo_id, sizeof(algo_id), "%s", input);
+    for (size_t i = 0; algo_id[i] != '\0'; i++)
+        algo_id[i] = (char)toupper((unsigned char)algo_id[i]);
+
+    printf("ZSM .bin 文件路径 (留空则从服务器查找匹配 ZSM): ");
+    if (read_line(input, sizeof(input)) == false) return;
+    trim_str(input);
+
+    if (input[0] != '\0')
+    {
+        if (ticket_read_whole_file(input, &zsm, &zsm_len) == false)
+        {
+            printf("读取 ZSM 文件失败: %s\n", input);
+            return;
+        }
+        printf("已读取 ZSM: %s (%zu 字节)\n", input, zsm_len);
+    }
+    else
+    {
+        const size_t max_attempts = ticket_prompt_attempts();
+        if (algo_fetch_matching_zsm(ua, algo_id, max_attempts, &zsm, &zsm_len) == false
+            || zsm == NULL || zsm_len == 0)
+        {
+            printf("没有拿到匹配的 ZSM\n");
+            free(zsm);
+            return;
+        }
+    }
+
+    if (strstr(ua, "android") != NULL)
+    {
+        if (get_android_zsm_key_iv((const uint8_t*)zsm, zsm_len, NULL,
+                key, &key_len, iv, &iv_len, &detected) == false)
+        {
+            printf("Android ZSM 解析 key/iv 失败\n");
+            free(zsm);
+            return;
+        }
+    }
+    else
+    {
+        if (get_linux_zsm_key_iv((const uint8_t*)zsm, zsm_len, NULL,
+                key, &key_len, iv, &iv_len, &detected) == false)
+        {
+            printf("Linux ZSM 解析 key/iv 失败\n");
+            free(zsm);
+            return;
+        }
+    }
+    free(zsm);
+
+    printf("\nAlgo-ID : %s\n", algo_id);
+    printf("静态判断: %s\n", elf_algo_type_name(detected));
+    printf("key/iv  : %zu/%zu 字节\n", key_len, iv_len);
+
+    {
+        const char* direct_client_id = getenv("TICKET_DIRECT_CLIENT_ID");
+        const char* direct_url = getenv("TICKET_DIRECT_URL");
+        if (direct_client_id == NULL || direct_client_id[0] == '\0')
+            direct_client_id = DIRECT_CLIENT_ID;
+        if (direct_url == NULL || direct_url[0] == '\0')
+            direct_url = DIRECT_TICKET_URL;
+        snprintf(client_id, sizeof(client_id), "%s", direct_client_id);
+        url = direct_url;
+    }
+
+    printf("Client-ID: %s\n", client_id);
+    printf("URL      : %s\n\n", url);
+
+    /* 静态命中的类型先试，其余类型按枚举顺序轮询 */
+    if (detected != ELF_ALGO_UNKNOWN) order[order_count++] = detected;
+    for (int type = 0; type < ELF_ALGO_COUNT; type++)
+    {
+        if ((elf_algo_type_t)type == detected) continue;
+        order[order_count++] = (elf_algo_type_t)type;
+    }
+
+    for (size_t i = 0; i < order_count; i++)
+    {
+        const elf_algo_type_t type = order[i];
+        cipher_interface_t* cipher = elf_create_cipher(type, key, key_len, iv, iv_len);
+        if (cipher == NULL) continue;
+
+        printf("[%zu/%zu] %-24s ... ", i + 1, order_count, elf_algo_type_name(type));
+        fflush(stdout);
+
+        ticket_raw_response_t raw = {0};
+        char* ticket = NULL;
+        const bool ok = check_one_id(ua, url, algo_id, client_id, NULL, 0,
+            CIPHER_MODE_HARDCODED, 0, reason, sizeof(reason), &raw, &ticket, cipher);
+        ticket_raw_free(&raw);
+
+        if (ok)
+        {
+            printf("OK\n");
+            success_count++;
+            printf("\n找到正确算法: %s\n", elf_algo_type_name(type));
+            printf("Ticket: %s\n", ticket != NULL ? ticket : "(空)");
+
+            {
+                FILE* fp = fopen("ticket_algo_poll.txt", "w");
+                if (fp != NULL)
+                {
+                    fprintf(fp, "algo_id=%s\nalgorithm=%s\nclient_id=%s\nurl=%s\nkey_len=%zu\niv_len=%zu\n",
+                        algo_id, elf_algo_type_name(type), client_id, url, key_len, iv_len);
+                    fprintf(fp, "key=");
+                    for (size_t k = 0; k < key_len; k++) fprintf(fp, "%02X", key[k]);
+                    fprintf(fp, "\niv=");
+                    for (size_t k = 0; k < iv_len; k++) fprintf(fp, "%02X", iv[k]);
+                    fprintf(fp, "\nticket=%s\n", ticket != NULL ? ticket : "");
+                    fclose(fp);
+                    printf("结果已写入 ticket_algo_poll.txt\n");
+                }
+            }
+
+            free(ticket);
+            break;
+        }
+
+        printf("FAIL (%s)\n", reason[0] != '\0' ? reason : "未知错误");
+        free(ticket);
+    }
+
+    if (success_count == 0)
+        printf("\n所有候选算法都失败，未找到能换到 ticket 的类型\n");
+
+    destroy_cipher_factory();
 }
 
 /*

@@ -58,6 +58,7 @@ add_executable(ESurfingClient
         src/cipher/algo/aes_ecb.c
         src/cipher/algo/aes_cbc.c
         src/cipher/algo/windows/win_zsm.c
+        src/cipher/algo/elf/elf_zsm.c
         src/cipher/CipherFactory.c
         src/cipher/CipherUtils.c
         src/cipher/KeyData.c

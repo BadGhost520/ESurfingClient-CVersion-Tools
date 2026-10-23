@@ -192,6 +192,132 @@ bool get_win_zsm_key_iv(const uint8_t* data, size_t length, char* algo_id_out,
     uint8_t* key_out, size_t* key_len_out, uint8_t* iv_out, size_t* iv_len_out,
     int8_t* type_out);
 
+/** Android / Linux .so key 窗口的最大 key/iv 长度 */
+#define ELF_SO_KEY_MAX 48
+#define ELF_SO_IV_MAX 16
+
+/**
+ * @brief Android / Linux 动态算法类型
+ *
+ * 这些类型与 CipherFactory 里现有的 create_* 一一对应; 动态解析只负责
+ * 从 .so 判断类型并传入 key/iv, 不再依赖 Algo-ID.
+ */
+typedef enum
+{
+    ELF_ALGO_UNKNOWN = -1,
+    ELF_ALGO_AES_CBC = 0,        /* create_aes_cbc_cipher (双层) */
+    ELF_ALGO_AES_ECB,            /* create_aes_ecb_cipher (双层) */
+    ELF_ALGO_AES_DOUBLE_CBC,     /* create_aes_double_cbc_cipher */
+    ELF_ALGO_AES_DOUBLE_ECB,     /* create_aes_double_ecb_cipher */
+    ELF_ALGO_DESEDE_CBC,         /* create_desede_cbc_cipher */
+    ELF_ALGO_DESEDE_DOUBLE_CBC,  /* create_desede_double_cbc_cipher */
+    ELF_ALGO_DES6,               /* create_des_ecb_six_cipher */
+    ELF_ALGO_DES6_KEYS,          /* create_des_ecb_six_keys_cipher */
+    ELF_ALGO_TEA_TRIPLE_ECB,     /* create_tea_triple_ecb_cipher */
+    ELF_ALGO_TEA_CBC_TRIPLE,     /* create_tea_triple_cbc_cipher */
+    ELF_ALGO_MOD_XTEA,           /* create_mod_xtea_cipher */
+    ELF_ALGO_MOD_XTEA_CBC_TRIPLE,/* create_mod_xtea_cbc_triple_cipher */
+    ELF_ALGO_SM4_CBC,            /* create_sm4_variant_cbc_cipher */
+    ELF_ALGO_SM4_ECB,            /* create_sm4_variant_ecb_cipher */
+    ELF_ALGO_SNOW3G,             /* create_snow3g_variant_cipher */
+    ELF_ALGO_COUNT
+} elf_algo_type_t;
+
+/**
+ * @brief 从解压后的 .so 代码指纹判断算法类型 (不使用 Algo-ID)
+ * @param data ELF 数据
+ * @param length 数据长度
+ * @param key_len key 长度
+ * @param iv_len iv 长度
+ * @return 算法类型, 未知返回 ELF_ALGO_UNKNOWN
+ */
+elf_algo_type_t elf_detect_algo_type(const uint8_t* data, size_t length,
+    size_t key_len, size_t iv_len);
+
+/**
+ * @brief 按算法类型和 key/iv 创建 cipher
+ * @param type 算法类型
+ * @param key key 缓冲区
+ * @param key_len key 长度
+ * @param iv iv 缓冲区, 可为 NULL
+ * @param iv_len iv 长度
+ * @return cipher, 失败返回 NULL
+ */
+cipher_interface_t* elf_create_cipher(elf_algo_type_t type,
+    const uint8_t* key, size_t key_len,
+    const uint8_t* iv, size_t iv_len);
+
+/**
+ * @brief 算法类型名称
+ */
+const char* elf_algo_type_name(elf_algo_type_t type);
+
+/**
+ * @brief 从 Android aarch64 动态模块 (.so) 中提取 key/iv
+ * @param data ELF 数据
+ * @param length 数据长度
+ * @param key_out key 输出缓冲区 (至少 ELF_SO_KEY_MAX)
+ * @param key_len_out key 长度
+ * @param iv_out iv 输出缓冲区 (至少 ELF_SO_IV_MAX)
+ * @param iv_len_out iv 长度 (0 表示该算法模块没有 iv)
+ * @param type_out 可选, 输出算法类型
+ * @return 是否成功
+ */
+bool get_android_so_key_iv(const uint8_t* data, size_t length,
+    uint8_t* key_out, size_t* key_len_out,
+    uint8_t* iv_out, size_t* iv_len_out,
+    elf_algo_type_t* type_out);
+
+/**
+ * @brief 从 Linux x86-64 动态模块 (.so) 中提取 key/iv
+ * @param data ELF 数据
+ * @param length 数据长度
+ * @param key_out key 输出缓冲区 (至少 ELF_SO_KEY_MAX)
+ * @param key_len_out key 长度
+ * @param iv_out iv 输出缓冲区 (至少 ELF_SO_IV_MAX)
+ * @param iv_len_out iv 长度 (0 表示该算法模块没有 iv)
+ * @param type_out 可选, 输出算法类型
+ * @return 是否成功
+ */
+bool get_linux_so_key_iv(const uint8_t* data, size_t length,
+    uint8_t* key_out, size_t* key_len_out,
+    uint8_t* iv_out, size_t* iv_len_out,
+    elf_algo_type_t* type_out);
+
+/**
+ * @brief 从服务器返回的 Android ZSM 容器直接解包并提取 key/iv
+ * @param data ZSM 数据 (001... 容器)
+ * @param length 数据长度
+ * @param algo_id_out 可选, 写入容器内的 Algo-ID
+ * @param key_out key 输出缓冲区 (至少 ELF_SO_KEY_MAX)
+ * @param key_len_out key 长度
+ * @param iv_out iv 输出缓冲区 (至少 ELF_SO_IV_MAX)
+ * @param iv_len_out iv 长度
+ * @param type_out 可选, 输出算法类型
+ * @return 是否成功
+ */
+bool get_android_zsm_key_iv(const uint8_t* data, size_t length, char* algo_id_out,
+    uint8_t* key_out, size_t* key_len_out,
+    uint8_t* iv_out, size_t* iv_len_out,
+    elf_algo_type_t* type_out);
+
+/**
+ * @brief 从服务器返回的 Linux ZSM 容器直接解包并提取 key/iv
+ * @param data ZSM 数据 (001... 容器)
+ * @param length 数据长度
+ * @param algo_id_out 可选, 写入容器内的 Algo-ID
+ * @param key_out key 输出缓冲区 (至少 ELF_SO_KEY_MAX)
+ * @param key_len_out key 长度
+ * @param iv_out iv 输出缓冲区 (至少 ELF_SO_IV_MAX)
+ * @param iv_len_out iv 长度
+ * @param type_out 可选, 输出算法类型
+ * @return 是否成功
+ */
+bool get_linux_zsm_key_iv(const uint8_t* data, size_t length, char* algo_id_out,
+    uint8_t* key_out, size_t* key_len_out,
+    uint8_t* iv_out, size_t* iv_len_out,
+    elf_algo_type_t* type_out);
+
 /**
  * @brief 销毁加解密工厂
  */

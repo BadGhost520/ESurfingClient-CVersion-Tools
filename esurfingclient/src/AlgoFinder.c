@@ -1195,6 +1195,18 @@ static bool parse_key_iv_from_zsm(const char* ua, const uint8_t* body, const siz
     {
         ok = get_ios_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len, &cdy);
     }
+    else if (strstr(ua, "android") != NULL)
+    {
+        elf_algo_type_t type = ELF_ALGO_UNKNOWN;
+        ok = get_android_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len, &type);
+        cdy = (int8_t)type;
+    }
+    else if (strstr(ua, "Linux") != NULL)
+    {
+        elf_algo_type_t type = ELF_ALGO_UNKNOWN;
+        ok = get_linux_zsm_key_iv(body, body_len, NULL, key, &key_len, iv, &iv_len, &type);
+        cdy = (int8_t)type;
+    }
     else
     {
         return false;
@@ -1228,6 +1240,8 @@ static const char* zsm_platform_name(const char* ua)
     if (strstr(ua, "WinSVR") != NULL) return "Windows";
     if (strstr(ua, "macdy") != NULL) return "macOS";
     if (strstr(ua, "iOSdy") != NULL) return "iOS";
+    if (strstr(ua, "android") != NULL) return "Android";
+    if (strstr(ua, "Linux") != NULL) return "Linux";
     return "Unknown";
 }
 
@@ -1331,9 +1345,11 @@ static void run_key_iv_with_ua(const char* ua)
     if (mode == FIND_MODE_COUNT) printf("查找次数: %zu\n", count);
     else printf("一直查找, 不按次数停止 (Ctrl+C 停止)\n");
 
-    if (strstr(ua, "WinSVR") == NULL && strstr(ua, "iOSdy") == NULL && strstr(ua, "macdy") == NULL)
+    if (strstr(ua, "WinSVR") == NULL && strstr(ua, "iOSdy") == NULL
+        && strstr(ua, "macdy") == NULL && strstr(ua, "android") == NULL
+        && strstr(ua, "Linux") == NULL)
     {
-        printf("提示: 该 UA 返回固定算法, ZSM 中没有可解析的 key/iv, 建议使用 Windows/iOS/macOS UA\n");
+        printf("提示: 该 UA 没有对应的动态 ZSM 解析路径\n");
     }
 
     s_find_stop = 0;

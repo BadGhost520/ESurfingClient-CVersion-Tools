@@ -11,7 +11,7 @@
   - 同一 Algo-ID 再次出现时会逐字节比较 key/iv/type。若与基准不同，写入 `<文件名>.variants.txt`，记录变体指纹（`MD5(Platform|Type|Key|IV)`）、长度变化、首个差异字节、完整 key/iv 和对比基准；再次运行会加载已有变体，避免重复写入。
   - 固定算法没有可解析的 ZSM key/iv，导出时会跳过。
 - **检查 Ticket 可用性**：选择 UA 后自动遍历该平台全部硬编码 Algo-ID。对每个 ID 先从 ticket 接口采样，直到拿到相同 Algo-ID 的 ZSM，再用该 ZSM 初始化算法并请求 ticket；一直检查到全部完成或按 `Ctrl+C` 停止，不再因连续 1000 次没有新目标而退出。成功/失败逐个显示；失败项会把本次请求头、请求体、响应头、响应体原样保存到 `ticket_failed_dumps/<Algo-ID>/`（`request_headers.txt`、`request_body.bin`、`response_headers.txt`、`response_body.bin`、`info.txt`），失败的 Algo-ID 写入 `ticket_failed_<平台>.txt`；`Ctrl+C` 时未检查的 ID 不会被当成失败。Windows/Android/Linux 采样时使用零 UUID body，iOS/macOS 使用空 body。失败项会同时显示服务端 `Error-Code`（如 `Error-Code=1` 表示服务端明确拒绝，不是网络超时）。
-- **算法代码**：算法实现已按算法名称统一放在 `esurfingclient/esurfing/src/cipher/algo/`，不再用 android/linux 命名，也不再保留 legacy 目录；能复用的旧实现已合并到主实现，独立旧算法也移到该目录。固定/动态分支统一在 `CipherFactory.c` 的单个 `create_cipher_factory()` 中，重复的 AES、SM4、XTEA 核心分别抽到 `aes_common.c`、`sm4_common.c`、`xtea_common.h`。key/iv 数据统一放在 `KeyData.c/.h`。
+- **算法代码**：算法实现已按算法名称统一放在 `esurfingclient/src`，不再用 android/linux 命名，也不再保留 legacy 目录；能复用的旧实现已合并到主实现，独立旧算法也移到该目录。固定/动态分支统一在 `CipherFactory.c` 的单个 `create_cipher_factory()` 中，重复的 AES、SM4、XTEA 核心分别抽到 `aes_common.c`、`sm4_common.c`、`xtea_common.h`。key/iv 数据统一放在 `KeyData.c/.h`。
 
 每个硬编码 Algo-ID 在 `CipherFactory.c` 中都有一个 `strcmp` 分支，直接调用对应的共享算法实现；key/iv 从 `KeyData.c` 传入。当前包含 56 条从 `windows_key_iv.txt`、`ios_key_iv.txt`、`macos_key_iv.txt` 收集的记录，未命中的 ID 仍会回退到动态 ZSM 获取。
 
@@ -39,9 +39,9 @@ IV: (none)
 
 序号按文件中的不重复算法连续编号，追加时会接着已有条数继续。`Type` 是 ZSM 的 `cdy` 算法类型；没有 IV 的动态算法会写成 `IV: (none)`。
 
-查找和动态匹配使用 `curl_multi` 并发请求，默认 24 路，单次请求 1 秒超时，超时直接丢弃；并发数可通过 `esurfingclient/esurfing/src/AlgoFinder.c` 顶部的 `TICKET_BATCH_SIZE` 调整。
+查找和动态匹配使用 `curl_multi` 并发请求，默认 24 路，单次请求 1 秒超时，超时直接丢弃；并发数可通过 `esurfingclient/src` 顶部的 `TICKET_BATCH_SIZE` 调整。
 
-查找接口地址、POST 请求体（`tarce log algo auto compstr null value`，38 字节）和固定请求头在 `esurfingclient/esurfing/src/AlgoFinder.c` 顶部，如果抓包得到的 ticket 请求发生变化，改这里的常量即可。
+查找接口地址、POST 请求体（`tarce log algo auto compstr null value`，38 字节）和固定请求头在 `esurfingclient/src` 顶部，如果抓包得到的 ticket 请求发生变化，改这里的常量即可。
 
 ## 编译
 

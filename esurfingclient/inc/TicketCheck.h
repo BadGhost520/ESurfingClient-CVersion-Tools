@@ -11,4 +11,9 @@ void ticket_check_run(void);
  */
 void ticket_direct_run(void);
 
+/**
+ * @brief 固定一个 Algo-ID，轮询现有算法实现直到换到 Ticket
+ */
+void ticket_algo_poll_run(void);
+
 #endif // ESURFINGCLIENT_TICKETCHECK_H
